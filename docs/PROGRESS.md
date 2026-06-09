@@ -8,28 +8,25 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 3 — Игровой цикл (идёт). Phase 0–2 закрыты. Готовы `ModelPlayer`,
-  системный промпт, context builder, `GameRunner` (happy path + ретрай/техпоражение
-  D-006); дальше — финализация result/termination для обычных окончаний и обработка
-  `resign` (`feat(arena): game end and result/termination`).
-- **Последняя завершённая задача:** `feat(arena): illegal move retry and technical
-  loss` — в `GameRunner._play_turn` добавлен цикл ретраев (D-006): нелегальный/
-  нераспознанный ход → `IllegalAttempt` (через `core.parse_move`), модели уходит
-  коррекция в `context_message(..., retry=...)`, она ходит заново. Счётчик попыток
-  локален ходу и сбрасывается после успешного хода; `illegal_move_retries` подряд →
-  `_technical_loss` (ставит `result` = победа соперника + `termination=
-  technical_loss`, останавливает цикл). Удачные попытки складываются в
-  `MoveRecord.illegal_attempts`. Новое событие `EVENT_ILLEGAL` на каждую попытку;
-  `EVENT_GAME_OVER` теперь несёт `result`/`termination`. `_resolve_move` вернул
-  `(ParsedMove|None, IllegalAttempt|None)` вместо проброса ошибки. Тесты
-  `tests/test_arena_runner.py` (17 шт: ретрай→легальный, коррекция в контексте,
-  3-strike за обе стороны, кастомный лимит, сброс счётчика, событие на попытку,
-  result/termination в game_over).
-- **Следующая задача:** `feat(arena): game end and result/termination` из
-  `docs/TODO.md` (Phase 3) — после остановки цикла проставлять `result`/
-  `termination` из `Board.outcome()` (мат/пат/ничьи D-012) для обычных окончаний;
-  реализовать `resign` (сейчас шов поднимает `GameRunnerError`) → `termination=
-  resign`, победа соперника.
+- **Фаза:** Phase 3 — Игровой цикл (почти закрыта). Phase 0–2 закрыты. Готов
+  `GameRunner` целиком: happy path, ретрай/техпоражение (D-006), финализация
+  result/termination и resign (D-020). Остался один пункт Phase 3 —
+  `feat(storage): persist and load game.json`, затем e2e-тест фейковыми игроками.
+- **Последняя завершённая задача:** `feat(arena): game end and result/termination`
+  (D-020) — `GameRunner._finalize` после остановки цикла проставляет
+  `result`/`termination` из `Board.outcome()` для обычных окончаний (мат/пат/ничьи),
+  не перезаписывая уже зафиксированные технические исходы; коды повторения сводятся
+  к `repetition` (`_normalize_termination`). `resign: true` (D-007) теперь
+  обрабатывается `_resign` (раньше был шов `GameRunnerError`): `termination=resign`,
+  результат = победа соперника. Обрыв по `max_plies` оставляет `result="*"`.
+  `GameRunnerError` оставлен зарезервированным типом ошибки раннера (на штатных
+  путях не поднимается). D-020 в DECISIONS. Тесты `tests/test_arena_runner.py`
+  (23 шт: +resign обе стороны, +resign в game_over, +insufficient_material сразу,
+  +stalemate после хода, +max_plies оставляет "*", +юнит `_normalize_termination`;
+  fool's mate теперь финализируется в `0-1`/`checkmate`).
+- **Следующая задача:** `feat(storage): persist and load game.json` из `docs/TODO.md`
+  (Phase 3) — папка партии `games/<id>/`, запись/чтение `GameRecord` ↔ `game.json`
+  (D-004), без секретов (D-003). Затем `test(arena): e2e with fake players`.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -38,7 +35,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 249 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + arena runner + prompts system + prompts context (+ fixtures) + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 255 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + arena runner + prompts system + prompts context (+ fixtures) + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -78,3 +75,4 @@
 | 2026-06-09 | `test(prompts): context builder`: `test_prompts_context_fixtures.py` (8 шт) — фикстурные сценарии: точный блок объяснений, round-trip встроенного PGN-снимка, совпадение списка легальных ходов с доской, отслеживание очереди по префиксам, порядок секций, «подсказка+ретрай», остаток подсказок по стороне, без секретов; pytest зелёный (232 passed) | `e855a75` | `feat(arena): game runner core loop` |
 | 2026-06-09 | `feat(arena): game runner core loop`: `src/arena/arena/runner.py` (`GameRunner`/`GameEvent`/`GameRunnerError`/`new_game_record` + `EVENT_*`) — главный цикл: чередование сторон, ведение `Board`+`GameRecord`, события, самодостаточный срез `[system, context]` на ход, запись `MoveRecord` и per-side истории; нелегальный/пустой ход и resign → `GameRunnerError` (швы под D-006/финализацию); экспорт из `arena.arena`; тесты `test_arena_runner.py` (10 шт, детский мат на `_ScriptedPlayer`); pytest зелёный (242 passed) | `cf4dc34` | `feat(arena): illegal move retry and technical loss` |
 | 2026-06-09 | `feat(arena): illegal move retry and technical loss`: цикл ретраев в `_play_turn` (D-006) — нелегальный ход → `IllegalAttempt` + коррекция `context(retry=...)` + повтор; счётчик локален ходу, `illegal_move_retries` подряд → `_technical_loss` (result+`termination=technical_loss`); попытки в `MoveRecord.illegal_attempts`; событие `EVENT_ILLEGAL`, `EVENT_GAME_OVER` несёт result/termination; тесты `test_arena_runner.py` (17 шт); pytest зелёный (249 passed) | `22a6505` | `feat(arena): game end and result/termination` |
+| 2026-06-09 | `feat(arena): game end and result/termination` (D-020): `_finalize` ставит result/termination из `Board.outcome()` для обычных окончаний (не перезаписывая техисходы), повторение → `repetition`; `resign` → `_resign` (termination=resign, победа соперника) вместо шва `GameRunnerError`; `max_plies` оставляет `"*"`; D-020 в DECISIONS; тесты `test_arena_runner.py` (23 шт); **Phase 3 — остался storage**; pytest зелёный (255 passed) | `<pending>` | `feat(storage): persist and load game.json` |

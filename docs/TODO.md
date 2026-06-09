@@ -40,7 +40,7 @@
 - [x] `test(prompts): context builder` — содержимое контекста на фикстурах.
 - [x] `feat(arena): game runner core loop` — чередование сторон, ведение board+record, события.
 - [x] `feat(arena): illegal move retry and technical loss` — коррекция, счётчик, 3-strike → `technical_loss`.
-- [ ] `feat(arena): game end and result/termination` — проставление `result`/`termination`, обработка `resign`.
+- [x] `feat(arena): game end and result/termination` — проставление `result`/`termination`, обработка `resign`.
 - [ ] `feat(storage): persist and load game.json` — папка партии, запись/чтение, без секретов.
 - [ ] `test(arena): e2e with fake players` — детерминированные игроки доигрывают партию, проверка `game.json`.
 

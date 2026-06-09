@@ -22,11 +22,13 @@
 technical_loss``); счётчик попыток локален ходу и сбрасывается после успешного
 хода. Удачные попытки складываются в ``MoveRecord.illegal_attempts``.
 
-Границы этой задачи. Заявленная сдача (``resign``) и проставление
-``result``/``termination`` для **обычных** окончаний (мат/пат/ничьи из
-``Board.outcome``) вынесены в следующую задачу Phase 3
-(``feat(arena): game end and result/termination``); пока ``resign`` поднимает
-``GameRunnerError``, а после обычного окончания ``result`` остаётся ``"*"``.
+Окончание партии (D-020). После остановки цикла ``result``/``termination``
+проставляются из ``Board.outcome()`` для обычных исходов (мат, пат, ничьи —
+с учётом D-012); коды повторения сводятся к ``repetition``. Технические исходы
+(техническое поражение, сдача) фиксируются сразу в момент события и не
+перезаписываются. ``resign: true`` в ответе (D-007) — добровольная сдача:
+``termination=resign``, победа соперника. Если партия оборвана по ``max_plies``,
+``result`` остаётся ``"*"``.
 """
 
 from __future__ import annotations
@@ -61,13 +63,22 @@ _SIDES: tuple[Side, Side] = ("white", "black")
 # PGN-результат при поражении стороны (победа соперника).
 _LOSS_RESULT: dict[Side, str] = {"white": "0-1", "black": "1-0"}
 
+# Финализация причины окончания → словарь спеки 5.3 / D-012: оба варианта
+# повторения сводятся к ``repetition`` (различие 3-/5-кратного несущественно).
+_REPETITION_TERMINATIONS = frozenset({"threefold_repetition", "fivefold_repetition"})
+
+
+def _normalize_termination(code: str) -> str:
+    """Свести код причины окончания к документированному словарю (D-012/D-020)."""
+    return "repetition" if code in _REPETITION_TERMINATIONS else code
+
 
 class GameRunnerError(RuntimeError):
-    """Игровой цикл не может продолжиться корректно.
+    """Неустранимая ошибка оркестрации игрового цикла.
 
-    В этой задаче поднимается только на ветке заявленной сдачи (``resign``) —
-    её обработка реализуется следующей задачей Phase 3. Кооперативные игроки её
-    не вызывают.
+    Зарезервированный тип ошибки раннера для будущих неустранимых ситуаций
+    (например, отказ движка при обязательной подсказке). На штатных путях —
+    нелегальный ход, сдача, обычное окончание — не поднимается.
     """
 
 
@@ -150,10 +161,9 @@ class GameRunner:
         """Доиграть партию из текущей позиции и вернуть заполненный ``GameRecord``.
 
         Цикл идёт, пока партия не окончена — по правилам доски (``Board.is_game_over``
-        с учётом D-012) или техническим поражением (``termination`` уже выставлен) —
-        и пока не достигнут ``max_plies``. ``result``/``termination`` для обычных
-        окончаний здесь не проставляются (задача финализации); техническое поражение
-        проставляет их само.
+        с учётом D-012) или зафиксированным исходом (техпоражение/сдача) — и пока не
+        достигнут ``max_plies``. По выходе ``_finalize`` проставляет ``result``/
+        ``termination`` для обычных окончаний (D-020).
         """
         self._emit(
             EVENT_GAME_START,
@@ -163,6 +173,7 @@ class GameRunner:
             if self._max_plies is not None and len(self._game.moves) >= self._max_plies:
                 break
             self._play_turn()
+        self._finalize()
         self._emit(
             EVENT_GAME_OVER,
             {
@@ -200,10 +211,8 @@ class GameRunner:
         while True:
             response = self._query(side, retry)
             if response.resign:
-                # Обработка сдачи — следующая задача Phase 3 (финализация результата).
-                raise GameRunnerError(
-                    f"{side} заявил сдачу — обработка resign в этой задаче не реализована"
-                )
+                self._resign(side)
+                return None
 
             parsed, rejected = self._resolve_move(response)
             if parsed is not None:
@@ -310,6 +319,30 @@ class GameRunner:
         """
         self._game.result = _LOSS_RESULT[side]
         self._game.termination = "technical_loss"
+
+    def _resign(self, side: Side) -> None:
+        """Зафиксировать добровольную сдачу ``side`` (D-007): ``result``/``termination``.
+
+        Сдача завершает партию вне зависимости от позиции: ``termination=resign``,
+        победа соперника. Цикл остановит установленный ``termination``.
+        """
+        self._game.result = _LOSS_RESULT[side]
+        self._game.termination = "resign"
+
+    def _finalize(self) -> None:
+        """Проставить ``result``/``termination`` для обычного окончания (D-020).
+
+        Технические исходы (техпоражение, сдача) уже зафиксированы — не трогаем их.
+        Если партия не окончена по правилам доски (обрыв по ``max_plies``) —
+        ``result`` остаётся ``"*"``. Коды повторения сводятся к ``repetition``.
+        """
+        if self._game.termination is not None:
+            return
+        outcome = self._board.outcome()
+        if outcome is None:
+            return
+        self._game.result = outcome.result
+        self._game.termination = _normalize_termination(outcome.termination)
 
     def _emit(self, event_type: str, payload: dict) -> None:
         """Передать событие в ``on_event`` (если задан)."""

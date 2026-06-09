@@ -1,19 +1,17 @@
-"""Тесты GameRunner — главного игрового цикла (Phase 3, happy path).
+"""Тесты GameRunner — главного игрового цикла (Phase 3).
 
 Игроки подменяются детерминированным ``_ScriptedPlayer``: он отдаёт заранее
 заданную последовательность ходов (без сети, без провайдера). Проверяем:
-чередование сторон и заполнение ``GameRecord`` (ходы, FEN, рассуждения),
-запись истории сообщений по сторонам, последовательность событий, остановку при
-окончании партии, защитный ``max_plies`` и швы под следующие задачи (нелегальный
-ход и сдача → ``GameRunnerError``). Финализация ``result``/``termination`` — задача
-следующего коммита, поэтому здесь ``result`` остаётся ``"*"``.
+чередование сторон и заполнение ``GameRecord`` (ходы, FEN, рассуждения), запись
+истории сообщений по сторонам, последовательность событий, защитный ``max_plies``;
+ретрай нелегального хода и техническое поражение (D-006); финализацию
+``result``/``termination`` для обычных окончаний (мат/пат/ничья) и обработку
+``resign`` (D-020).
 """
 
 from __future__ import annotations
 
 from datetime import datetime
-
-import pytest
 
 from arena.arena import (
     EVENT_GAME_OVER,
@@ -23,9 +21,9 @@ from arena.arena import (
     EVENT_TURN_START,
     GameEvent,
     GameRunner,
-    GameRunnerError,
     new_game_record,
 )
+from arena.arena.runner import _normalize_termination
 from arena.core import Board
 from arena.models import LLMResponse, PlayerInfo, PlayerSettings, Side
 
@@ -107,10 +105,10 @@ def test_plays_fools_mate_and_records_moves():
     assert [m.side for m in game.moves] == ["white", "black", "white", "black"]
     assert [m.san for m in game.moves] == ["f3", "e5", "g4", "Qh4#"]
     assert [m.ply for m in game.moves] == [1, 2, 3, 4]
-    # Партия закончена матом, но финализация результата — следующая задача.
+    # Партия закончена матом → финализация результата (чёрные заматовали белых).
     assert runner.board.is_game_over()
-    assert game.result == "*"
-    assert game.termination is None
+    assert game.result == "0-1"
+    assert game.termination == "checkmate"
 
 
 def test_move_records_carry_fen_uci_and_reasoning():
@@ -293,10 +291,80 @@ def test_game_over_event_reports_result_and_termination():
     assert over.payload["result"] == "0-1"
 
 
-# --- шов под следующую задачу: resign ----------------------------------------
+# --- окончание партии: result/termination и resign (D-020) -------------------
 
-def test_resign_raises_game_runner_error():
-    # Белые сразу заявляют сдачу — обработка resign ещё не реализована.
-    runner, _, _ = _runner([], [], white={"resign_after": 0})
-    with pytest.raises(GameRunnerError, match="сдач"):
-        runner.play()
+def test_white_resign_awards_black():
+    runner, _, game = _runner([], [], white={"resign_after": 0})
+    runner.play()
+
+    assert game.termination == "resign"
+    assert game.result == "0-1"
+    assert game.moves == []  # ход не сделан, сдача до хода
+
+
+def test_black_resign_awards_white():
+    # Белые ходят e4, чёрные тут же сдаются.
+    runner, _, game = _runner(["e4"], [], black={"resign_after": 0})
+    runner.play()
+
+    assert game.termination == "resign"
+    assert game.result == "1-0"
+    assert [m.san for m in game.moves] == ["e4"]
+
+
+def test_resign_emitted_in_game_over_event():
+    events: list[GameEvent] = []
+    runner, _, _ = _runner([], [], white={"resign_after": 0}, on_event=events.append)
+    runner.play()
+
+    over = next(e for e in events if e.type == EVENT_GAME_OVER)
+    assert over.payload["termination"] == "resign"
+    assert over.payload["result"] == "0-1"
+
+
+def test_insufficient_material_is_drawn_immediately():
+    # Король против короля — партия окончена сразу, цикл не делает ходов.
+    players = {
+        "white": _ScriptedPlayer("w", []),
+        "black": _ScriptedPlayer("b", []),
+    }
+    game = new_game_record(players, game_id="kk", created_at=CREATED_AT)
+    runner = GameRunner(players, game, board=Board("7k/8/8/8/8/8/8/7K w - - 0 1"))
+    runner.play()
+
+    assert game.moves == []
+    assert game.termination == "insufficient_material"
+    assert game.result == "1/2-1/2"
+
+
+def test_stalemate_is_drawn_after_the_move():
+    # Один ход белых ставит чёрному пат.
+    players = {
+        "white": _ScriptedPlayer("w", ["Kg6"]),
+        "black": _ScriptedPlayer("b", []),
+    }
+    game = new_game_record(players, game_id="stale", created_at=CREATED_AT)
+    runner = GameRunner(players, game, board=Board("7k/5Q2/8/6K1/8/8/8/8 w - - 0 1"))
+    runner.play()
+
+    assert [m.san for m in game.moves] == ["Kg6"]
+    assert game.termination == "stalemate"
+    assert game.result == "1/2-1/2"
+
+
+def test_max_plies_break_leaves_result_open():
+    # Обрыв по пределу — партия не окончена, результат остаётся "*".
+    runner, _, game = _runner(["e4", "Nf3"], ["e5", "Nc6"], max_plies=2)
+    runner.play()
+
+    assert game.result == "*"
+    assert game.termination is None
+
+
+def test_normalize_termination_collapses_repetition():
+    assert _normalize_termination("threefold_repetition") == "repetition"
+    assert _normalize_termination("fivefold_repetition") == "repetition"
+    # прочие коды проходят без изменений.
+    assert _normalize_termination("checkmate") == "checkmate"
+    assert _normalize_termination("fifty_moves") == "fifty_moves"
+    assert _normalize_termination("stalemate") == "stalemate"
