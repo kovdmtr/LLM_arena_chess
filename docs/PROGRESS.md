@@ -8,21 +8,20 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 3 закрыта; **Phase 4 (артефакты) началась.** Phase 0–2 закрыты.
-  Готов `GameRunner` целиком, слой `storage` (`game.json` + экспорт `game.pgn`) и
-  сквозной e2e-тест. Дальше в Phase 4 — `test(storage): pgn opens as valid game`,
-  затем рендер доски (SVG) и HTML-отчёт.
-- **Последняя завершённая задача:** `feat(storage): export game.pgn` (D-004) —
-  `storage.export_pgn` строит PGN из `GameRecord` через `core.build_pgn` и пишет
-  `games/<id>/game.pgn` (атомарно, файл с финальным `\n`); флаг `include_reasoning`
-  пробрасывается. Атомарная запись вынесена в общий хелпер `_atomic_write` (его
-  переиспользует и `save_game`). `PGN_NAME`/`export_pgn` экспортированы из
-  `arena.storage`. Тесты `test_storage_game_store.py` (теперь 25 шт: +7 на export —
-  путь/папка, заголовки и ходы, финальный `\n`, `include_reasoning=False`, соседство
-  с `game.json`, без `.tmp`-остатков, валидация id, без секретов).
-- **Следующая задача:** `test(storage): pgn opens as valid game` из `docs/TODO.md`
-  (Phase 4) — повторный парсинг экспортированного PGN (`chess.pgn.read_game`),
-  проверка совпадения ходов/результата с `GameRecord`.
+- **Фаза:** Phase 3 закрыта; **Phase 4 (артефакты) в работе.** Phase 0–2 закрыты.
+  Готов `GameRunner` целиком, слой `storage` (`game.json` + экспорт `game.pgn` +
+  проверка, что PGN открывается как валидная партия). Дальше в Phase 4 — рендер
+  доски (SVG), HTML-отчёт и генерация `report.html` из `game.json`.
+- **Последняя завершённая задача:** `test(storage): pgn opens as valid game` —
+  `tests/test_storage_game_store.py` (+6, всего 31): экспортированный `export_pgn`
+  **файл с диска** перечитывается `chess.pgn.read_game` и сверяется с `GameRecord`
+  (SAN-последовательность, UCI, легальное перепроигрывание до мата, теги
+  Result/Termination, ничейная партия, round-trip `save_game`→`load_game`→`export_pgn`).
+  Отличие от `test_pgn_export.py` — там тестируется строка `build_pgn`, здесь
+  именно записанный на диск артефакт. Фикстура «детского мата» строится через
+  `python-chess` (согласованные uci/fen).
+- **Следующая задача:** `feat(report): board image rendering` из `docs/TODO.md`
+  (Phase 4) — рендер доски в SVG (опц. PNG через cairosvg).
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -31,7 +30,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 279 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export) + arena e2e + smoke; всего 286 passed).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 292 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + arena e2e + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -75,3 +74,4 @@
 | 2026-06-09 | `feat(storage): persist and load game.json` (D-004/D-003): `storage/game_store.py` — `save_game` (атомарная запись `games/<id>/game.json`, mkdir), `load_game` (из файла/папки), `game_dir`, `_validate_game_id` (анти-traversal), `StorageError`; экспорт из `arena.storage`; тесты `test_storage_game_store.py` (18 шт); **Phase 3 — остался e2e-тест**; pytest зелёный (273 passed) | `2459237` | `test(arena): e2e with fake players` |
 | 2026-06-09 | `test(arena): e2e with fake players`: `test_arena_e2e.py` (6 шт) — фейковые игроки доигрывают мат Шольяра, `save_game`→`load_game` round-trip, детали ходов, сборка PGN из загруженной записи, путь файла, без секретов; **Phase 3 закрыта**; pytest зелёный (279 passed) | `adc6ec4` | `feat(storage): export game.pgn` |
 | 2026-06-09 | `feat(storage): export game.pgn` (D-004): `storage.export_pgn` — PGN из `GameRecord` через `core.build_pgn` в `games/<id>/game.pgn` (атомарно, финальный `\n`, флаг `include_reasoning`); общий хелпер `_atomic_write` (переиспользует `save_game`); экспорт `PGN_NAME`/`export_pgn`; тесты `test_storage_game_store.py` (+7, всего 25); **Phase 4 началась**; pytest зелёный (286 passed) | `a4bdcb1` | `test(storage): pgn opens as valid game` |
+| 2026-06-09 | `test(storage): pgn opens as valid game`: `test_storage_game_store.py` (+6, всего 31) — экспортированный **файл** перечитывается `chess.pgn.read_game` и сверяется с `GameRecord` (SAN/UCI, легальное перепроигрывание до мата, теги Result/Termination, ничья, round-trip `save→load→export`); фикстура «детского мата» через `python-chess`; pytest зелёный (292 passed) | _pending_ | `feat(report): board image rendering` |

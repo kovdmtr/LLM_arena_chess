@@ -1,7 +1,10 @@
 """Тесты хранения партии: ``GameRecord`` ↔ ``games/<id>/game.json`` (D-004, D-003)."""
 
+import io
 from datetime import datetime, timezone
 
+import chess
+import chess.pgn
 import pytest
 
 from arena import (
@@ -214,3 +217,127 @@ def test_export_pgn_validates_id_from_record(tmp_path):
 def test_export_pgn_has_no_secrets(tmp_path):
     target = export_pgn(_record("g-001"), games_root=tmp_path)
     assert "api_key" not in target.read_text(encoding="utf-8")
+
+
+# --- pgn opens as valid game (повторный парсинг файла на диске) --------------
+#
+# Отличие от ``test_pgn_export.py``: там проверяется строка из ``build_pgn``;
+# здесь — что именно **файл**, записанный ``export_pgn`` на диск, открывается
+# ``chess.pgn.read_game`` и согласуется с исходным ``GameRecord``.
+
+# Классический «детский мат»: 1.e4 e5 2.Bc4 Nc6 3.Qh5 Nf6?? 4.Qxf7#.
+_SCHOLARS_MATE = ["e4", "e5", "Bc4", "Nc6", "Qh5", "Nf6", "Qxf7#"]
+
+
+def _full_game_record(
+    sans=_SCHOLARS_MATE,
+    *,
+    game_id="g-pgn",
+    result="1-0",
+    termination="checkmate",
+) -> GameRecord:
+    """``GameRecord`` из списка SAN-ходов (согласованные uci/fen через python-chess)."""
+    board = chess.Board()
+    moves = []
+    for index, san in enumerate(sans, start=1):
+        move = board.parse_san(san)
+        fen_before = board.fen()
+        uci = move.uci()
+        board.push(move)
+        moves.append(
+            MoveRecord(
+                ply=index,
+                side="white" if index % 2 == 1 else "black",
+                san=san,
+                uci=uci,
+                fen_before=fen_before,
+                fen_after=board.fen(),
+                reasoning=f"ход {san}",
+            )
+        )
+    return GameRecord(
+        id=game_id,
+        created_at=datetime(2026, 6, 9, 12, 0, tzinfo=timezone.utc),
+        players={
+            "white": PlayerInfo(model_id="gpt-x", provider="openai", display_name="GPT"),
+            "black": PlayerInfo(
+                model_id="claude-x", provider="anthropic", display_name="Claude"
+            ),
+        },
+        moves=moves,
+        result=result,
+        termination=termination,
+    )
+
+
+def _read_parsed(path) -> chess.pgn.Game:
+    """Прочитать PGN-файл с диска и распарсить его как игру."""
+    parsed = chess.pgn.read_game(io.StringIO(path.read_text(encoding="utf-8")))
+    assert parsed is not None  # файл должен открываться как валидная партия
+    return parsed
+
+
+def test_exported_pgn_file_reparses_with_matching_moves(tmp_path):
+    record = _full_game_record()
+    target = export_pgn(record, games_root=tmp_path)
+
+    parsed = _read_parsed(target)
+    # SAN-последовательность из файла совпадает с ходами записи.
+    assert [n.san() for n in parsed.mainline()] == [m.san for m in record.moves]
+
+
+def test_exported_pgn_file_replays_legally_to_checkmate(tmp_path):
+    target = export_pgn(_full_game_record(), games_root=tmp_path)
+
+    board = chess.Board()
+    for move in _read_parsed(target).mainline_moves():
+        assert move in board.legal_moves
+        board.push(move)
+    assert board.is_checkmate()
+
+
+def test_exported_pgn_file_result_matches_record(tmp_path):
+    record = _full_game_record(result="1-0", termination="checkmate")
+    target = export_pgn(record, games_root=tmp_path)
+
+    headers = _read_parsed(target).headers
+    assert headers["Result"] == record.result
+    assert headers["Termination"] == record.termination
+
+
+def test_exported_pgn_file_uci_matches_record(tmp_path):
+    record = _full_game_record()
+    target = export_pgn(record, games_root=tmp_path)
+
+    parsed_uci = [m.uci() for m in _read_parsed(target).mainline_moves()]
+    assert parsed_uci == [m.uci for m in record.moves]
+
+
+def test_saved_and_exported_pgn_reparses_after_round_trip(tmp_path):
+    # game.json — источник истины: пишем, читаем обратно, из загруженной записи
+    # экспортируем PGN, и он открывается с теми же ходами (D-004).
+    original = _full_game_record(game_id="g-rt-pgn")
+    save_game(original, games_root=tmp_path)
+    loaded = load_game(tmp_path / "g-rt-pgn")
+    target = export_pgn(loaded, games_root=tmp_path)
+
+    parsed = _read_parsed(target)
+    assert [n.san() for n in parsed.mainline()] == [m.san for m in original.moves]
+
+
+def test_exported_draw_pgn_file_reparses(tmp_path):
+    # Ничейная партия без мата тоже открывается как валидный файл.
+    record = _full_game_record(
+        sans=["e4", "e5", "Nf3", "Nf6"],
+        game_id="g-draw",
+        result="1/2-1/2",
+        termination="stalemate",
+    )
+    target = export_pgn(record, games_root=tmp_path)
+
+    parsed = _read_parsed(target)
+    assert parsed.headers["Result"] == "1/2-1/2"
+    board = chess.Board()
+    for move in parsed.mainline_moves():
+        assert move in board.legal_moves
+        board.push(move)
