@@ -47,7 +47,14 @@ def _clean(raw: str) -> str:
     return raw.strip().strip(_WRAPPERS).strip()
 
 
-def _to_parsed(board: Board, move: chess.Move) -> ParsedMove:
+def _to_parsed(board: Board, raw: str, move: chess.Move) -> ParsedMove:
+    # ``python-chess`` принимает ``0000`` / ``--`` / ``@@@@`` как null-move и в
+    # SAN, и в UCI, не проверяя легальность. Но «пропуск хода» в шахматах
+    # невозможен — модель не должна его сделать, поэтому отвергаем здесь.
+    if not move:
+        raise MoveParseError(
+            raw, f"{_clean(raw)!r} не распознан как ход (ожидается SAN или UCI)"
+        )
     return ParsedMove(move=move, san=board.san_of(move), uci=move.uci())
 
 
@@ -82,7 +89,7 @@ def parse_move(board: Board, raw: str) -> ParsedMove:
         )
         move = None
     else:
-        return _to_parsed(board, move)
+        return _to_parsed(board, raw, move)
 
     # 2) Пробуем UCI (нижний регистр: продвижение пишется как ``e7e8q``).
     try:
@@ -97,4 +104,4 @@ def parse_move(board: Board, raw: str) -> ParsedMove:
         raise MoveParseError(
             raw, f"ход {token!r} нелегален в текущей позиции"
         ) from None
-    return _to_parsed(board, move)
+    return _to_parsed(board, raw, move)

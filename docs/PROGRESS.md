@@ -8,17 +8,17 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 1 — Шахматное ядро (есть `Board` wrapper + краевые тесты окончания).
-- **Последняя завершённая задача:** `feat(core): move parsing` —
-  `core/move_parsing.py` (`parse_move`, `ParsedMove`, `MoveParseError`): снимает
-  обёртку вокруг хода (кавычки, markdown, точка), пробует SAN, затем UCI (D-005),
-  нормализует в `(san, uci)`; при неудаче — `MoveParseError` с понятной `reason`
-  (пусто / не распознан / неоднозначно / нелегально) для ретрая (D-007). Доску не
-  мутирует. В `Board` добавлены публичные `san_of`/`parse_san`/`parse_uci`. Тесты
-  `tests/test_move_parsing.py` (20 шт).
-- **Следующая задача:** `test(core): move parsing` из `docs/TODO.md` (Phase 1) —
-  углубить покрытие краевых входов (en passant в UCI, null-move `0000`, формы
-  снятия неоднозначности, смешанный регистр UCI). Базовый набор уже есть.
+- **Фаза:** Phase 1 — Шахматное ядро (`Board` wrapper + парсинг ходов с полным покрытием).
+- **Последняя завершённая задача:** `test(core): move parsing` — расширены тесты
+  `tests/test_move_parsing.py` (+11, всего 31): en passant в UCI и SAN, верхний
+  регистр UCI (`G1F3`, `E7E8Q`), снятие неоднозначности файлом/рангом (`Nde4`,
+  `R1a3`), `e2e2`/усечённый UCI, `NF3`. Тесты вскрыли дефект: `python-chess`
+  принимал null-move `0000`/`--` без проверки легальности — `parse_move` молча
+  возвращал «ход» с SAN `--`. Добавлен guard в `_to_parsed` (отвергает любой
+  null-move как «не распознан», покрывает обе ветки SAN/UCI) — см. D-015.
+- **Следующая задача:** `feat(models): pydantic data models` из `docs/TODO.md`
+  (Phase 1) — `MoveRecord`, `MessageRecord`, `HintRecord`, `GameRecord`,
+  `LLMResponse`, `AnalysisSummary` в `src/arena/models.py`.
   (Опционально остаётся хвост Phase 0: `test(config): settings and catalog`.)
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
@@ -28,7 +28,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 54 passed: config + catalog + board + endgame + move parsing + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 65 passed: config + catalog + board + endgame + move parsing + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -52,3 +52,4 @@
 | 2026-06-09 | `feat(core): board wrapper`: `core/board.py` (`Board`, `GameOutcome`); FEN/ходы/push/outcome, маппинг `chess.Termination`, `auto_claim_draws` (D-012); тесты `test_board.py`; pytest зелёный (28 passed) | `a11a011` | `test(core): board and endgame detection` |
 | 2026-06-09 | `test(core): board and endgame detection`: `tests/test_board_endgame.py` (6 шт) — недостаток материала, 75 ходов, троекратное/пятикратное повторение, поведение `auto_claim_draws`; pytest зелёный (34 passed) | `6bb2225` | `feat(core): move parsing` |
 | 2026-06-09 | `feat(core): move parsing`: `core/move_parsing.py` (`parse_move`/`ParsedMove`/`MoveParseError`) — SAN→UCI, снятие обёртки, причина при неудаче; публичные `Board.san_of/parse_san/parse_uci`; тесты `test_move_parsing.py` (20 шт); pytest зелёный (54 passed) | `c056fba` | `test(core): move parsing` |
+| 2026-06-09 | `test(core): move parsing`: +11 тестов (en passant, регистр UCI, неоднозначность, null-move); guard против null-move `0000`/`--` в `_to_parsed` (D-015); pytest зелёный (65 passed) | _pending_ | `feat(models): pydantic data models` |

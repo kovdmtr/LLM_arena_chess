@@ -21,7 +21,7 @@
 - [x] `feat(core): board wrapper` — FEN, `legal_moves_san()`, `push()`, `is_game_over()`, `outcome()` + причина окончания.
 - [x] `test(core): board and endgame detection` — мат/пат/ничьи/повторения.
 - [x] `feat(core): move parsing` — извлечение хода из текста/JSON (SAN→UCI), причина при неудаче.
-- [ ] `test(core): move parsing` — легальные/нелегальные/мусорные входы.
+- [x] `test(core): move parsing` — легальные/нелегальные/мусорные входы.
 - [ ] `feat(models): pydantic data models` — `MoveRecord`, `MessageRecord`, `HintRecord`, `GameRecord`, `LLMResponse`, `AnalysisSummary`.
 - [ ] `feat(core): build PGN from GameRecord` — теги, ходы, комментарии-рассуждения.
 - [ ] `test(core): pgn export` — валидность и совместимость тегов.
