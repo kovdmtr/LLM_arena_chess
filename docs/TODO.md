@@ -45,7 +45,7 @@
 - [x] `test(arena): e2e with fake players` — детерминированные игроки доигрывают партию, проверка `game.json`.
 
 ## Phase 4 — Артефакты
-- [ ] `feat(storage): export game.pgn` — из `GameRecord` через `core.pgn`.
+- [x] `feat(storage): export game.pgn` — из `GameRecord` через `core.pgn`.
 - [ ] `test(storage): pgn opens as valid game` — повторный парсинг PGN.
 - [ ] `feat(report): board image rendering` — SVG (+ опц. PNG через cairosvg).
 - [ ] `feat(report): html report template` — Jinja2: шапка, ходы, доски, рассуждения, итог.

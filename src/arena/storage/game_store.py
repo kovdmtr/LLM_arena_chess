@@ -15,10 +15,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from arena.core import build_pgn
 from arena.models import GameRecord
 
 # Имя канонического файла партии внутри её папки (D-004).
 GAME_JSON_NAME = "game.json"
+
+# Имя экспортированного PGN внутри папки партии.
+PGN_NAME = "game.pgn"
 
 # Корень для артефактов партий по умолчанию (совпадает с ``OutputConfig.games_dir``).
 DEFAULT_GAMES_ROOT = "games"
@@ -48,6 +52,18 @@ def game_dir(game_id: str, *, games_root: str | Path = DEFAULT_GAMES_ROOT) -> Pa
     return Path(games_root) / _validate_game_id(game_id)
 
 
+def _atomic_write(target: Path, text: str) -> None:
+    """Записать ``text`` в ``target`` атомарно (временный файл + ``replace``).
+
+    Создаёт родительскую папку при необходимости; гарантирует, что при сбое не
+    останется полузаписанный файл (читатель видит либо старую, либо новую версию).
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_name(target.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(target)
+
+
 def save_game(
     record: GameRecord, *, games_root: str | Path = DEFAULT_GAMES_ROOT
 ) -> Path:
@@ -57,14 +73,27 @@ def save_game(
     файл + ``replace``), чтобы не оставить полупустой ``game.json`` при сбое.
     ``id`` берётся из самого ``record`` и проверяется как безопасный сегмент пути.
     """
-    directory = game_dir(record.id, games_root=games_root)
-    directory.mkdir(parents=True, exist_ok=True)
-    target = directory / GAME_JSON_NAME
+    target = game_dir(record.id, games_root=games_root) / GAME_JSON_NAME
+    _atomic_write(target, record.model_dump_json(indent=2))
+    return target
 
-    payload = record.model_dump_json(indent=2)
-    tmp = target.with_name(target.name + ".tmp")
-    tmp.write_text(payload, encoding="utf-8")
-    tmp.replace(target)
+
+def export_pgn(
+    record: GameRecord,
+    *,
+    games_root: str | Path = DEFAULT_GAMES_ROOT,
+    include_reasoning: bool = True,
+) -> Path:
+    """Сгенерировать ``games_root/<id>/game.pgn`` из ``record`` и вернуть путь.
+
+    PGN — производный артефакт: он строится из ``GameRecord`` через
+    ``core.build_pgn`` (D-004), а не ведётся параллельно. Запись атомарна, файл
+    завершается переводом строки (как принято для PGN). ``include_reasoning``
+    управляет добавлением рассуждений моделей комментариями ``{...}`` к ходам.
+    """
+    target = game_dir(record.id, games_root=games_root) / PGN_NAME
+    pgn = build_pgn(record, include_reasoning=include_reasoning)
+    _atomic_write(target, pgn + "\n")
     return target
 
 

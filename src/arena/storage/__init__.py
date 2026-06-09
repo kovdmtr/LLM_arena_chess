@@ -3,7 +3,9 @@
 from arena.storage.game_store import (
     DEFAULT_GAMES_ROOT,
     GAME_JSON_NAME,
+    PGN_NAME,
     StorageError,
+    export_pgn,
     game_dir,
     load_game,
     save_game,
@@ -12,7 +14,9 @@ from arena.storage.game_store import (
 __all__ = [
     "DEFAULT_GAMES_ROOT",
     "GAME_JSON_NAME",
+    "PGN_NAME",
     "StorageError",
+    "export_pgn",
     "game_dir",
     "load_game",
     "save_game",

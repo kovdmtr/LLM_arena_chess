@@ -15,7 +15,9 @@ from arena import (
 )
 from arena.storage import (
     GAME_JSON_NAME,
+    PGN_NAME,
     StorageError,
+    export_pgn,
     game_dir,
     load_game,
     save_game,
@@ -159,3 +161,56 @@ def test_saved_game_json_has_no_secret_keys(tmp_path):
     assert "api_key" not in text
     # Сохраняется только несекретное описание игрока (D-003).
     assert "model_id" in text and "gpt-x" in text
+
+
+# --- export_pgn -------------------------------------------------------------
+
+
+def test_export_pgn_writes_pgn_in_id_folder(tmp_path):
+    target = export_pgn(_record("g-001"), games_root=tmp_path)
+    assert target == tmp_path / "g-001" / PGN_NAME
+    assert target.is_file()
+
+
+def test_export_pgn_content_has_headers_and_moves(tmp_path):
+    target = export_pgn(_record("g-001"), games_root=tmp_path)
+    text = target.read_text(encoding="utf-8")
+
+    assert '[Event "LLM Chess Arena"]' in text
+    assert '[Result "1-0"]' in text
+    assert "1. e4" in text
+    assert text.endswith("\n")  # PGN-файл завершается переводом строки
+
+
+def test_export_pgn_can_omit_reasoning(tmp_path):
+    with_reason = export_pgn(_record("g-r1"), games_root=tmp_path)
+    without = export_pgn(
+        _record("g-r2"), games_root=tmp_path, include_reasoning=False
+    )
+    assert "контроль центра" in with_reason.read_text(encoding="utf-8")
+    assert "контроль центра" not in without.read_text(encoding="utf-8")
+
+
+def test_export_pgn_sits_alongside_game_json(tmp_path):
+    save_game(_record("g-001"), games_root=tmp_path)
+    export_pgn(_record("g-001"), games_root=tmp_path)
+    folder = tmp_path / "g-001"
+    assert (folder / GAME_JSON_NAME).is_file()
+    assert (folder / PGN_NAME).is_file()
+
+
+def test_export_pgn_leaves_no_tmp_file(tmp_path):
+    export_pgn(_record("g-001"), games_root=tmp_path)
+    assert list((tmp_path / "g-001").glob("*.tmp")) == []
+
+
+def test_export_pgn_validates_id_from_record(tmp_path):
+    bad = _record()
+    bad.id = "../escape"
+    with pytest.raises(StorageError):
+        export_pgn(bad, games_root=tmp_path)
+
+
+def test_export_pgn_has_no_secrets(tmp_path):
+    target = export_pgn(_record("g-001"), games_root=tmp_path)
+    assert "api_key" not in target.read_text(encoding="utf-8")
