@@ -8,16 +8,15 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 0 — Каркас и конфиг (почти готова; остался опц. `test(config)`).
-- **Последняя завершённая задача:** `feat(config): model catalog` — `arena/config/catalog.py`:
-  `ModelCatalog` поверх `AppConfig` + `Secrets` (`from_settings`, `ids`, `models`, `get`,
-  `api_key_env_for`, `has_key`, `resolve`); `ResolvedModel` с ключом (исключён из
-  `repr`/`model_dump`, чтобы секрет не утёк); `ConfigError` для неизвестной модели/провайдера,
-  дубля `id` и отсутствия ключа (fail-fast). Тесты `tests/test_catalog.py` (10 шт).
-- **Следующая задача:** `feat(core): board wrapper` из `docs/TODO.md` (Phase 1) —
-  обёртка над `python-chess`: `fen()`, `legal_moves_san()`, `push()`, `is_game_over()`,
-  `outcome()` + причина окончания. (Опционально перед этим — отдельный коммит
-  `test(config): settings and catalog` для расширения краевых случаев валидации.)
+- **Фаза:** Phase 1 — Шахматное ядро (начата; есть `Board` wrapper).
+- **Последняя завершённая задача:** `feat(core): board wrapper` — `arena/core/board.py`:
+  `Board` поверх `chess.Board` (`fen`, `turn`, `fullmove_number`, `ply`, `legal_moves_san`,
+  `legal_moves_uci`, `push`/`push_san`, `is_game_over`, `outcome`, `copy`); `GameOutcome`
+  (`result`/`winner`/`termination`) с маппингом `chess.Termination` → стабильные коды;
+  учёт заявляемых ничьих через `auto_claim_draws` (D-012). Тесты `tests/test_board.py` (9 шт).
+- **Следующая задача:** `test(core): board and endgame detection` из `docs/TODO.md` (Phase 1) —
+  расширить краевые случаи окончания: троекратное/пятикратное повторение, недостаток
+  материала, 75 ходов. (Опционально остаётся хвост Phase 0: `test(config): settings and catalog`.)
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -26,7 +25,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 19 passed: config + catalog + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 28 passed: config + catalog + board + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -47,3 +46,4 @@
 | 2026-06-09 | `chore: add gitignore and env example`: добавлен `.env.example` (3 ключа провайдеров); pytest зелёный (2 passed) | `12cd6f1` | `feat(config): load settings from .env and config.yaml` |
 | 2026-06-09 | `feat(config): load settings`: дефолтный `config.yaml` + `config/settings.py` (`AppConfig.from_yaml`, `Secrets`, `Settings.load`); тесты `test_config.py`; pytest зелёный (9 passed) | `369da0c` | `feat(config): model catalog` |
 | 2026-06-09 | `feat(config): model catalog`: `config/catalog.py` (`ModelCatalog`, `ResolvedModel`, `ConfigError`); резолв ключа по `api_key_env`, fail-fast, маскирование ключа; тесты `test_catalog.py`; pytest зелёный (19 passed) | `848d0fb` | `feat(core): board wrapper` |
+| 2026-06-09 | `feat(core): board wrapper`: `core/board.py` (`Board`, `GameOutcome`); FEN/ходы/push/outcome, маппинг `chess.Termination`, `auto_claim_draws` (D-012); тесты `test_board.py`; pytest зелёный (28 passed) | _pending_ | `test(core): board and endgame detection` |

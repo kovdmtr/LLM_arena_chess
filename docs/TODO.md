@@ -18,7 +18,7 @@
 - [ ] `test(config): settings and catalog` — юнит-тесты загрузки/валидации.
 
 ## Phase 1 — Шахматное ядро
-- [ ] `feat(core): board wrapper` — FEN, `legal_moves_san()`, `push()`, `is_game_over()`, `outcome()` + причина окончания.
+- [x] `feat(core): board wrapper` — FEN, `legal_moves_san()`, `push()`, `is_game_over()`, `outcome()` + причина окончания.
 - [ ] `test(core): board and endgame detection` — мат/пат/ничьи/повторения.
 - [ ] `feat(core): move parsing` — извлечение хода из текста/JSON (SAN→UCI), причина при неудаче.
 - [ ] `test(core): move parsing` — легальные/нелегальные/мусорные входы.
