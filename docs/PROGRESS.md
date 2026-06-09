@@ -9,27 +9,26 @@
 ## Текущее состояние
 
 - **Фаза:** Phase 0–6 закрыты; **Phase 7 (закалка) В РАБОТЕ.** Сделано в Phase 7:
-  `feat(providers): retry with backoff` (D-022). Осталось: логирование с маскированием,
-  единый путь деградации без движка (в т.ч. **подключение движка в веб-партии** — сейчас
-  они на базовом уровне), full e2e, пример партии + финал доков. Готов `GameRunner`
+  `feat(providers): retry with backoff` (D-022), `feat(obs): logging with key masking`
+  (D-023). Осталось: единый путь деградации без движка (в т.ч. **подключение движка в
+  веб-партии** — сейчас они на базовом уровне), full e2e, пример партии + финал доков. Готов `GameRunner`
   (с протоколом подсказок, D-010), слой `storage` (`game.json` + `game.pgn` +
   `report.html`), слой `report` (SVG/опц. PNG + Jinja2-отчёт со сводкой ★-анализа),
   ★ обёртка движка `engine/stockfish.py` (`best_move`/`evaluate`, деградация без
   бинарника), ★ слой `analysis/` (centipawn-loss классификация + `AnalysisSummary` +
   LLM-комментарий ключевых моментов, D-009) и ★ веб-интерфейс (Phase 6).
-- **Последняя завершённая задача:** `feat(providers): retry with backoff` ★закалка
-  (D-022) — `providers/retry.py`: `is_transient_error` (эвристика «повторять ли» по
-  `status_code`/тексту: rate-limit/timeout/connection/5xx, без привязки к классам SDK) +
-  `call_with_retry` (экспоненциальный backoff с потолком `max_delay` и `jitter`,
-  инъекция `sleep`/`rng` для детерминизма). Интеграция — `LLMProvider._call(fn)`
-  оборачивает единственный SDK-вызов каждой реализации **внутри** `try/except`, поэтому
-  итог по-прежнему → `ProviderError` с маскированием ключа (D-003). `RetryConfig` из
-  `config.yaml → retry`, через `create_provider(retry=...)`; дефолт 3 попытки.
-  Тесты `test_providers_retry.py` (27). До неё — `fix(config): allow temperature=null`.
-- **Следующая задача:** `feat(obs): logging with key masking` — структурное логирование
-  с маскированием секретов. Далее по Phase 7: `chore: graceful degradation without engine`
-  (+ подключение движка в веб-партии), `test: full e2e run`, `docs: finalize and add
-  sample game`.
+- **Последняя завершённая задача:** `feat(obs): logging with key masking` ★закалка
+  (D-023) — слой `obs` (`obs/log.py`): namespaced-логгер `arena` (`get_logger("web")`),
+  `StructuredFormatter` (текст/JSON) и сквозное маскирование секретов **на форматтере**
+  (вырезает ключ из сообщения/args/extra/трейсбека). Реестр секретов глобален и
+  наполняется авто: `LLMProvider.__init__` регистрирует `model.api_key`, веб —
+  загруженные `Settings` (`_ensure_settings`). `NullHandler` на корне → тихо до
+  `configure_logging`. `GameManager` логирует старт/финал/сбой партии. Тесты
+  `test_obs_logging.py` (17) + `test_web_logging.py` (2). До неё — retry (D-022).
+- **Следующая задача:** `chore: graceful degradation without engine` — единый путь
+  отключения ★ без Stockfish **+ подключение движка в веб-партии** (сейчас веб играет без
+  движка: нет подсказок/пост-анализа в отчётах веб-партий). Далее: `test: full e2e run`,
+  `docs: finalize and add sample game`.
 - **Примечание (среда):** установленный Starlette использует НОВУЮ сигнатуру
   `Jinja2Templates.TemplateResponse(request, name, context)` (старый порядок
   `(name, {"request": ...})` падает `TypeError: unhashable type: 'dict'`). `TestClient`
@@ -43,7 +42,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 473 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport/retry + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template (вкл. сводку ★-анализа + интерактивный плеер) + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + analysis commentary ★ + web app skeleton ★ + web model selection ★ + web start game ★ + web live view ★ + web games view ★ + config provider names + optional temperature (omit when null) + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 490 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport/retry + obs logging + web logging + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template (вкл. сводку ★-анализа + интерактивный плеер) + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + analysis commentary ★ + web app skeleton ★ + web model selection ★ + web start game ★ + web live view ★ + web games view ★ + config provider names + optional temperature (omit when null) + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
 - Запуск веб-UI: `\.venv\Scripts\python.exe -m uvicorn arena.web.app:app` (каркас: `/`, `/health`, `/static`).
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -113,3 +112,4 @@
 | 2026-06-09 | `fix(web): align provider name google→gemini` — баг при ручном прогоне: в `config.yaml` провайдер Gemini назывался `google`, а реализация зарегистрирована как `gemini` (D-018) → выбор Gemini падал `ProviderError` (500) при старте партии. Исправлен `config.yaml` (`gemini`+model.provider), `POST /games` теперь ловит и `ProviderError` (форма с ошибкой 400, не 500); регрессия `test_config_provider_names.py` (2, имена провайдеров ⊆ реестр) + `test_web_start_game.py` (+1, ProviderError); pytest зелёный (443 passed, 1 skipped) | `94eb69e` | Phase 7 (закалка) |
 | 2026-06-09 | `fix(providers): make temperature optional` — при ручном прогоне `claude-opus-4-8` отвечал 400 «temperature is deprecated for this model». `ModelParams.temperature` → `float \| None` (дефолт 0.2); OpenAI/Anthropic не передают `temperature`, когда `None` (Gemini SDK уже трактует None как unset); в `config.yaml` у `claude-opus-4-8` `temperature: null`. Проверено вживую: Anthropic отвечает. Тесты +2 (openai/anthropic «omit when none»); pytest зелёный (445 passed, 1 skipped). **Прочие наблюдения ручного прогона:** OpenAI-ключ в `.env` невалиден (401, на стороне пользователя); `gemini-2.5-pro` иногда возвращает пустой ответ (думающая модель + малый max_tokens) и это **обрывает всю партию** — устойчивость (сбой провайдера → не падать целиком) и retry/max_tokens оставлены на Phase 7 | `7aa2d46` (+`cb2c194` gemini) | Phase 7 (закалка) |
 | 2026-06-09 | `feat(providers): retry with backoff` ★закалка (D-022): `providers/retry.py` — `is_transient_error` (status_code/текст: rate-limit/timeout/connection/5xx) + `call_with_retry` (экспонента+jitter, инъекция `sleep`/`rng`); `LLMProvider._call` оборачивает SDK-вызов внутри `try/except` (итог → `ProviderError`, ключ замаскирован); `RetryConfig` в `config.yaml→retry` через `create_provider(retry=...)`, дефолт 3 попытки; тесты `test_providers_retry.py` (27); pytest зелёный (473 passed, 1 skipped) | `90d0749` | `feat(obs): logging with key masking` |
+| 2026-06-09 | `feat(obs): logging with key masking` ★закалка (D-023): слой `obs` — namespaced-логгер `arena`, `StructuredFormatter` (текст/JSON) + сквозное маскирование на форматтере (сообщение/args/extra/трейсбек); глобальный реестр секретов авто-наполняется (`LLMProvider.__init__`→`register_secret(model.api_key)`, веб `_ensure_settings`); `NullHandler` до `configure_logging`; `GameManager` логирует старт/финал/сбой; тесты `test_obs_logging.py`(17)+`test_web_logging.py`(2); pytest зелёный (490 passed, 1 skipped) | `064aab5` | `chore: graceful degradation without engine` (+движок в веб) |
