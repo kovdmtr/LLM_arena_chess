@@ -92,6 +92,26 @@ class Board:
         """Легальные ходы в нотации UCI."""
         return [move.uci() for move in self._board.legal_moves]
 
+    def san_of(self, move: chess.Move) -> str:
+        """SAN-запись хода в текущей позиции (ход не применяется)."""
+        return self._board.san(move)
+
+    def parse_san(self, san: str) -> chess.Move:
+        """Разобрать ход в SAN без применения.
+
+        Бросает подклассы ``ValueError`` из ``python-chess``
+        (``InvalidMoveError`` / ``IllegalMoveError`` / ``AmbiguousMoveError``).
+        """
+        return self._board.parse_san(san)
+
+    def parse_uci(self, uci: str) -> chess.Move:
+        """Разобрать ход в UCI без применения, с проверкой легальности.
+
+        Бросает ``InvalidMoveError`` при неверном формате и ``IllegalMoveError``,
+        если ход нелегален в текущей позиции.
+        """
+        return self._board.parse_uci(uci)
+
     def push(self, move: chess.Move) -> None:
         """Применить уже разобранный ``chess.Move``.
 
