@@ -24,7 +24,7 @@
 - [x] `test(core): move parsing` — легальные/нелегальные/мусорные входы.
 - [x] `feat(models): pydantic data models` — `MoveRecord`, `MessageRecord`, `HintRecord`, `GameRecord`, `LLMResponse`, `AnalysisSummary`.
 - [x] `feat(core): build PGN from GameRecord` — теги, ходы, комментарии-рассуждения.
-- [ ] `test(core): pgn export` — валидность и совместимость тегов.
+- [x] `test(core): pgn export` — валидность и совместимость тегов.
 
 ## Phase 2 — Провайдеры LLM
 - [ ] `feat(providers): base interface and factory` — `LLMProvider.complete()`, фабрика по имени.

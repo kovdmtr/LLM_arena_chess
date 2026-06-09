@@ -8,22 +8,20 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 1 — Шахматное ядро (почти закрыта: остался `test(core): pgn export`).
-- **Последняя завершённая задача:** `feat(core): build PGN from GameRecord` —
-  `src/arena/core/pgn.py`: публичная `build_pgn(game) -> str` собирает текстовый PGN
-  из `GameRecord` через `python-chess` (D-004 — PGN порождается из `game.json`).
-  Теги: семь обязательных (Event/Site/Date/Round/White/Black/Result) + служебные
-  `Termination`, `WhiteModel`/`BlackModel`, `WhiteProvider`/`BlackProvider` (D-016).
-  Ходы применяются из `MoveRecord.uci` → корректные SAN и нумерация; рассуждения
-  идут комментариями `{...}` (опц. флаг `include_reasoning`); `_clean_comment`
-  обезвреживает фигурные скобки (`{`/`}` → `(`/`)`) и переводы строк. Секретов в PGN
-  нет (D-003) — в тегах только `model_id`. Экспорт из `arena.core`. Тесты
-  `tests/test_pgn.py` (9 шт): семь тегов, служебные теги без секретов, SAN-порядок,
-  комментарии-рассуждения и их отключение, санитайз скобок/переводов строк,
-  round-trip через `chess.pgn.read_game`, пустая партия.
-- **Следующая задача:** `test(core): pgn export` из `docs/TODO.md` (Phase 1) —
-  расширенный блок тестов на валидность/совместимость PGN (полноценная партия,
-  перепарсинг тегов, кромочные случаи). После — переход в Phase 2 (провайдеры).
+- **Фаза:** Phase 1 — Шахматное ядро **закрыта**. Дальше Phase 2 (провайдеры LLM).
+- **Последняя завершённая задача:** `test(core): pgn export` —
+  `tests/test_pgn_export.py` (13 шт): расширенный блок на валидность/совместимость
+  PGN. Партии собираются через `python-chess` (SAN проигрывается на доске → согласо-
+  ванные `uci`/`fen_*`, фикстура самовалидируется). Покрыто: полная партия (детский
+  мат) с round-trip до `is_checkmate`; STR в каноническом порядке до служебных тегов;
+  перепарсинг всех заголовков (включая `*Model`/`*Provider`); кромочные ходы —
+  рокировка `O-O`, взятие на проходе `exd6`, превращение `bxa8=Q`; токен результата
+  завершает movetext для всех 4 исходов; отсутствие тега `Termination` при `None`;
+  переопределение `event`/`site`/`round_`; корректная нумерация ходов в тексте;
+  round-trip Unicode в имени игрока и в рассуждении; ничейная партия; отсутствие
+  секретов (`api_key`/`sk-`/`secret`) в выводе.
+- **Следующая задача:** `feat(providers): base interface and factory` из `docs/TODO.md`
+  (Phase 2) — `LLMProvider.complete()` + фабрика по имени провайдера.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -32,7 +30,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 100 passed: config + catalog + board + endgame + move parsing + models + pgn + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 113 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -60,3 +58,4 @@
 | 2026-06-09 | `test(config): settings and catalog`: +11 краевых тестов загрузки/валидации (settings +7, catalog +4); Phase 0 закрыта; pytest зелёный (76 passed) | `5efa519` | `feat(models): pydantic data models` |
 | 2026-06-09 | `feat(models): pydantic data models`: `src/arena/models.py` (11 моделей — `GameRecord` и др., Literal-типы, `protected_namespaces=()` для `model_id`), экспорт из `arena`; тесты `test_models.py` (15 шт, round-trip JSON); pytest зелёный (91 passed) | `8ff5ba8` | `feat(core): build PGN from GameRecord` |
 | 2026-06-09 | `feat(core): build PGN from GameRecord`: `core/pgn.py` (`build_pgn`) — 7 тегов + служебные (D-016), ходы из uci → SAN, рассуждения как `{...}`, санитайз скобок/переносов; экспорт из `arena.core`; тесты `test_pgn.py` (9 шт); pytest зелёный (100 passed) | `8fd138a` | `test(core): pgn export` |
+| 2026-06-09 | `test(core): pgn export`: `tests/test_pgn_export.py` (13 шт) — полная партия (детский мат) с round-trip, STR в каноническом порядке, рокировка/en passant/превращение, токены результата, override тегов, Unicode, без секретов; **Phase 1 закрыта**; pytest зелёный (113 passed) | _(pending)_ | `feat(providers): base interface and factory` |
