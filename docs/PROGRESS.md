@@ -9,11 +9,12 @@
 ## Текущее состояние
 
 - **Фаза:** Phase 0 — Каркас и конфиг (начата по коду).
-- **Последняя завершённая задача:** `chore: init project` — `pyproject.toml`
-  (зависимости + dev/report-png extras, entry point `arena`), скелет пакета
-  `src/arena/` (12 слоёв по `ARCHITECTURE.md`), `tests/` со smoke-тестом.
-- **Следующая задача:** `chore: add gitignore and env example` из `docs/TODO.md`
-  (Phase 0). `.gitignore` уже есть — осталось добавить `.env.example`.
+- **Последняя завершённая задача:** `chore: add gitignore and env example` —
+  `.gitignore` уже был полным; добавлен `.env.example` с тремя именами ключей
+  провайдеров (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`) без значений.
+- **Следующая задача:** `feat(config): load settings from .env and config.yaml`
+  из `docs/TODO.md` (Phase 0) — `Settings` (pydantic-settings) + `config.yaml`
+  по умолчанию.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -37,3 +38,4 @@
 | 2026-06-09 | Документация проекта + инфраструктура сессий, git init | (initial commit) | `chore: init project` |
 | 2026-06-09 | `chore: init project`: pyproject + скелет `src/arena/` (12 слоёв) + smoke-тест | `7bf8606` | `chore: add gitignore and env example` |
 | 2026-06-09 | Добавлен «Критерий готовности задачи» (тесты + зелёный `pytest` обязательны перед коммитом) в `CLAUDE.md`/`TODO.md` | `4f69fd2`, `2ec354e` | `chore: add gitignore and env example` |
+| 2026-06-09 | `chore: add gitignore and env example`: добавлен `.env.example` (3 ключа провайдеров); pytest зелёный (2 passed) | _pending_ | `feat(config): load settings from .env and config.yaml` |
