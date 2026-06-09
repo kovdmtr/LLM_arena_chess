@@ -8,15 +8,15 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 1 — Шахматное ядро (начата; есть `Board` wrapper).
-- **Последняя завершённая задача:** `feat(core): board wrapper` — `arena/core/board.py`:
-  `Board` поверх `chess.Board` (`fen`, `turn`, `fullmove_number`, `ply`, `legal_moves_san`,
-  `legal_moves_uci`, `push`/`push_san`, `is_game_over`, `outcome`, `copy`); `GameOutcome`
-  (`result`/`winner`/`termination`) с маппингом `chess.Termination` → стабильные коды;
-  учёт заявляемых ничьих через `auto_claim_draws` (D-012). Тесты `tests/test_board.py` (9 шт).
-- **Следующая задача:** `test(core): board and endgame detection` из `docs/TODO.md` (Phase 1) —
-  расширить краевые случаи окончания: троекратное/пятикратное повторение, недостаток
-  материала, 75 ходов. (Опционально остаётся хвост Phase 0: `test(config): settings and catalog`.)
+- **Фаза:** Phase 1 — Шахматное ядро (есть `Board` wrapper + краевые тесты окончания).
+- **Последняя завершённая задача:** `test(core): board and endgame detection` —
+  `tests/test_board_endgame.py` (6 шт): недостаток материала (K/K, K+B/K, K+N/K),
+  75-ходовое правило (автоматическое), троекратное повторение (зависит от
+  `auto_claim_draws`) и пятикратное (автоматическое). Проверяет контракт кодов
+  `termination` и поведение флага D-012.
+- **Следующая задача:** `feat(core): move parsing` из `docs/TODO.md` (Phase 1) —
+  извлечение хода из текста/JSON ответа модели (SAN→UCI), внятная причина при неудаче.
+  (Опционально остаётся хвост Phase 0: `test(config): settings and catalog`.)
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -25,7 +25,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 28 passed: config + catalog + board + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 34 passed: config + catalog + board + endgame + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -47,3 +47,4 @@
 | 2026-06-09 | `feat(config): load settings`: дефолтный `config.yaml` + `config/settings.py` (`AppConfig.from_yaml`, `Secrets`, `Settings.load`); тесты `test_config.py`; pytest зелёный (9 passed) | `369da0c` | `feat(config): model catalog` |
 | 2026-06-09 | `feat(config): model catalog`: `config/catalog.py` (`ModelCatalog`, `ResolvedModel`, `ConfigError`); резолв ключа по `api_key_env`, fail-fast, маскирование ключа; тесты `test_catalog.py`; pytest зелёный (19 passed) | `848d0fb` | `feat(core): board wrapper` |
 | 2026-06-09 | `feat(core): board wrapper`: `core/board.py` (`Board`, `GameOutcome`); FEN/ходы/push/outcome, маппинг `chess.Termination`, `auto_claim_draws` (D-012); тесты `test_board.py`; pytest зелёный (28 passed) | `a11a011` | `test(core): board and endgame detection` |
+| 2026-06-09 | `test(core): board and endgame detection`: `tests/test_board_endgame.py` (6 шт) — недостаток материала, 75 ходов, троекратное/пятикратное повторение, поведение `auto_claim_draws`; pytest зелёный (34 passed) | _pending_ | `feat(core): move parsing` |
