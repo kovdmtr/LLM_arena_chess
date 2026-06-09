@@ -32,6 +32,18 @@ class ProviderError(RuntimeError):
     """
 
 
+def mask_secret(text: str, secret: str | None) -> str:
+    """Заменить вхождения ``secret`` в ``text`` на ``***`` (защита от утечки ключа).
+
+    Используется реализациями при оборачивании ошибок SDK в ``ProviderError``:
+    текст исключения провайдера может содержать ключ, а он не должен попасть в
+    лог/артефакты (D-003). Пустой/``None`` секрет — возврат текста без изменений.
+    """
+    if not secret:
+        return text
+    return text.replace(secret, "***")
+
+
 class LLMProvider(ABC):
     """Единый интерфейс к LLM-провайдеру.
 

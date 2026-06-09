@@ -9,14 +9,20 @@ from arena.providers.base import (
     LLMProvider,
     ProviderError,
     create_provider,
+    mask_secret,
     register_provider,
     registered_providers,
 )
 
+# Импорт реализаций регистрирует их в реестре (фабрика по имени провайдера).
+from arena.providers.openai_provider import OpenAIProvider
+
 __all__ = [
     "LLMProvider",
     "ProviderError",
+    "OpenAIProvider",
     "create_provider",
+    "mask_secret",
     "register_provider",
     "registered_providers",
 ]
