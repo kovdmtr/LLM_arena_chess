@@ -27,7 +27,7 @@
 - [x] `test(core): pgn export` — валидность и совместимость тегов.
 
 ## Phase 2 — Провайдеры LLM
-- [ ] `feat(providers): base interface and factory` — `LLMProvider.complete()`, фабрика по имени.
+- [x] `feat(providers): base interface and factory` — `LLMProvider.complete()`, фабрика по имени.
 - [ ] `feat(providers): openai` — реализация + маскирование ключа.
 - [ ] `feat(providers): anthropic` — реализация (+ prompt caching статичной части).
 - [ ] `feat(providers): gemini` — реализация.

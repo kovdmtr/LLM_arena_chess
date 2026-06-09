@@ -8,20 +8,22 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 1 — Шахматное ядро **закрыта**. Дальше Phase 2 (провайдеры LLM).
-- **Последняя завершённая задача:** `test(core): pgn export` —
-  `tests/test_pgn_export.py` (13 шт): расширенный блок на валидность/совместимость
-  PGN. Партии собираются через `python-chess` (SAN проигрывается на доске → согласо-
-  ванные `uci`/`fen_*`, фикстура самовалидируется). Покрыто: полная партия (детский
-  мат) с round-trip до `is_checkmate`; STR в каноническом порядке до служебных тегов;
-  перепарсинг всех заголовков (включая `*Model`/`*Provider`); кромочные ходы —
-  рокировка `O-O`, взятие на проходе `exd6`, превращение `bxa8=Q`; токен результата
-  завершает movetext для всех 4 исходов; отсутствие тега `Termination` при `None`;
-  переопределение `event`/`site`/`round_`; корректная нумерация ходов в тексте;
-  round-trip Unicode в имени игрока и в рассуждении; ничейная партия; отсутствие
-  секретов (`api_key`/`sk-`/`secret`) в выводе.
-- **Следующая задача:** `feat(providers): base interface and factory` из `docs/TODO.md`
-  (Phase 2) — `LLMProvider.complete()` + фабрика по имени провайдера.
+- **Фаза:** Phase 2 — Провайдеры LLM. Базовый интерфейс и фабрика готовы; дальше
+  конкретные реализации (openai/anthropic/gemini).
+- **Последняя завершённая задача:** `feat(providers): base interface and factory` —
+  `providers/base.py`: абстрактный `LLMProvider.complete(messages, params) -> str`
+  (сырой текст; разбор в `LLMResponse` — задача вышестоящего слоя), `ProviderError`,
+  и реестр/фабрика по имени провайдера. Реализации регистрируются декоратором
+  `register_provider("<name>")` (повторная регистрация другого класса под тем же
+  именем — ошибка, того же класса — идемпотентна); `create_provider(ResolvedModel)`
+  инстанцирует класс на каждый вызов и fail-fast с понятным сообщением для
+  незарегистрированного провайдера. Реестр хранит классы, а не SDK — фабрика не
+  зависит от конкретных провайдеров. Ключ не утекает (`__repr__` без `api_key`).
+  Экспорт из `arena.providers`; тесты `test_providers_base.py` (10 шт, на фейковом
+  провайдере, реестр изолируется фикстурой).
+- **Следующая задача:** `feat(providers): openai` из `docs/TODO.md` (Phase 2) —
+  реализация поверх `openai` SDK + маскирование ключа, регистрация через
+  `register_provider("openai")`.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -30,7 +32,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 113 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 123 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -59,3 +61,4 @@
 | 2026-06-09 | `feat(models): pydantic data models`: `src/arena/models.py` (11 моделей — `GameRecord` и др., Literal-типы, `protected_namespaces=()` для `model_id`), экспорт из `arena`; тесты `test_models.py` (15 шт, round-trip JSON); pytest зелёный (91 passed) | `8ff5ba8` | `feat(core): build PGN from GameRecord` |
 | 2026-06-09 | `feat(core): build PGN from GameRecord`: `core/pgn.py` (`build_pgn`) — 7 тегов + служебные (D-016), ходы из uci → SAN, рассуждения как `{...}`, санитайз скобок/переносов; экспорт из `arena.core`; тесты `test_pgn.py` (9 шт); pytest зелёный (100 passed) | `8fd138a` | `test(core): pgn export` |
 | 2026-06-09 | `test(core): pgn export`: `tests/test_pgn_export.py` (13 шт) — полная партия (детский мат) с round-trip, STR в каноническом порядке, рокировка/en passant/превращение, токены результата, override тегов, Unicode, без секретов; **Phase 1 закрыта**; pytest зелёный (113 passed) | `f2c2c04` | `feat(providers): base interface and factory` |
+| 2026-06-09 | `feat(providers): base interface and factory`: `providers/base.py` (`LLMProvider.complete`, `ProviderError`, реестр + `register_provider`/`create_provider`); фабрика по имени, fail-fast, ключ не в `repr`; экспорт из `arena.providers`; тесты `test_providers_base.py` (10 шт); pytest зелёный (123 passed) | `_pending_` | `feat(providers): openai` |
