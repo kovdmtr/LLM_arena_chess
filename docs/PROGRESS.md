@@ -8,23 +8,25 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 3 закрыта; **Phase 4 (артефакты) в работе.** Phase 0–2 закрыты.
-  Готов `GameRunner`, слой `storage` (`game.json` + `game.pgn` + проверка валидности
-  PGN) и слой `report`: рендер доски (SVG/опц. PNG) и HTML-шаблон отчёта (Jinja2).
-  Дальше в Phase 4 — генерация `report.html` из `game.json` (запись на диск) и
-  smoke-тест рендера.
-- **Последняя завершённая задача:** `feat(report): html report template` —
-  `report/template.py` (`render_report_html`) + Jinja2-шаблон
-  `report/templates/report.html.j2`: самодостаточный HTML (шапка с игроками/итогом,
-  лента ходов с inline-SVG досками из `board_image`, рассуждения, бейджи
-  классификации/оценки ★ — только если заполнены пост-анализом, подсказки). Автоэкран
-  пользовательского текста (имена/рассуждения), SVG помечается `Markup` safe. Перед
-  ней — `feat(report): board image rendering` (`report/board_image.py`:
-  `render_board_svg`/`render_move_svg` поверх `chess.svg`, подсветка хода и шаха,
-  опц. PNG через `cairosvg` с деградацией `PngUnavailableError`).
-- **Следующая задача:** `feat(report): render report from game.json` из `docs/TODO.md`
-  (Phase 4) — генерация self-contained `games/<id>/report.html` из загруженного
-  `game.json` (слой `storage`/CLI, запись на диск).
+- **Фаза:** Phase 4 (артефакты) закрыта; **Phase 5 (★ движок: подсказки и анализ)
+  в работе.** Phase 0–3 закрыты. Готов `GameRunner`, слой `storage` (`game.json` +
+  `game.pgn` + `report.html`), слой `report` (SVG/опц. PNG + Jinja2-отчёт) и ★ обёртка
+  движка `engine/stockfish.py` (`best_move`/`evaluate`, деградация без бинарника).
+  Дальше в Phase 5 — протокол подсказок в `GameRunner` (D-010) и centipawn-loss
+  анализ с классификацией (D-009).
+- **Последняя завершённая задача:** `test(engine): stockfish (skip if absent)` —
+  `tests/test_engine_stockfish.py` (15 шт + 1 skip): разбор оценок на фейковом движке
+  (без бинарника), `.relative` (POV ходящей стороны), мат → `mate_in`/±большое целое,
+  глубина, жизненный цикл процесса, `EngineUnavailableError`; интеграционный тест с
+  реальным Stockfish пропускается, если бинарника нет в PATH. Перед ней —
+  `feat(engine): stockfish wrapper` (`engine/stockfish.py`: `StockfishEngine` поверх
+  python-chess UCI, D-008; `best_move(fen)→HintRecord`, `evaluate(fen)→cp`, ленивый
+  запуск + контекстный менеджер, `opener` инъектируется для тестов). До них в Phase 4 —
+  `feat(report): render report from game.json` (`storage.export_report` пишет
+  self-contained `games/<id>/report.html`) + smoke-тест рендера из фикстуры.
+- **Следующая задача:** `feat(arena): hint protocol` ★ из `docs/TODO.md` (Phase 5) —
+  `request_hint` расходует 1 из 3 подсказок (D-010): `engine.best_move` → запись
+  `HintRecord`, инъекция подсказки в контекст следующего хода.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -33,7 +35,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 317 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template + arena e2e + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 341 passed, 2 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template + report render from fixture + engine stockfish (real-binary skip) + arena e2e + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -80,3 +82,7 @@
 | 2026-06-09 | `test(storage): pgn opens as valid game`: `test_storage_game_store.py` (+6, всего 31) — экспортированный **файл** перечитывается `chess.pgn.read_game` и сверяется с `GameRecord` (SAN/UCI, легальное перепроигрывание до мата, теги Result/Termination, ничья, round-trip `save→load→export`); фикстура «детского мата» через `python-chess`; pytest зелёный (292 passed) | `832dbe9` | `feat(report): board image rendering` |
 | 2026-06-09 | `feat(report): board image rendering` (D-005): `report/board_image.py` — `render_board_svg(fen)`/`render_move_svg(MoveRecord)` поверх `chess.svg` (подсветка последнего хода и шаха, ориентация, размер); опц. PNG `svg_to_png` через `cairosvg` (extra `report-png`) с деградацией `PngUnavailableError`, `png_available`; тесты `test_report_board_image.py` (10, +1 skip без cairosvg); pytest зелёный (302 passed, 1 skipped) | `acd2d0c` | `feat(report): html report template` |
 | 2026-06-09 | `feat(report): html report template`: `report/template.py` (`render_report_html`) + `report/templates/report.html.j2` — самодостаточный HTML: шапка (игроки/модели/итог), лента ходов с inline-SVG досками, рассуждения, бейджи классификации/оценки ★ (если есть), подсказки; автоэкран пользовательского текста, SVG как `Markup`; тесты `test_report_template.py` (15); pytest зелёный (317 passed, 1 skipped) | `7772f12` | `feat(report): render report from game.json` |
+| 2026-06-09 | `feat(report): render report from game.json`: `storage.export_report` пишет self-contained `games/<id>/report.html` из `GameRecord` через `report.render_report_html` (атомарно, `_atomic_write`); inline SVG (D-013), флаг `include_boards`; экспорт `REPORT_NAME`/`export_report`; pytest зелёный | `4a02425` | `test(report): report renders from fixture` |
+| 2026-06-09 | `test(report): report renders from fixture`: `test_report_render_from_fixture.py` (9 шт) — фикстура «детского мата» → `export_report` пишет файл, который self-contained (DOCTYPE/inline SVG/без `<img>`), показывает игроков/ходы/итог, рядом с `game.json`, без `.tmp`, валидирует id, без секретов, рендерится после save→load; **Phase 4 закрыта**; pytest зелёный | `86ecfbe` | `feat(engine): stockfish wrapper` |
+| 2026-06-09 | `feat(engine): stockfish wrapper` (D-008): ★ `engine/stockfish.py` (`StockfishEngine` + `EngineUnavailableError`) поверх python-chess UCI — `best_move(fen)→HintRecord` (uci + eval_cp/mate_in, POV ходящей стороны, D-010), `evaluate(fen)→cp` (мат→±100000 для D-009); ленивый запуск, контекстный менеджер, `opener` инъектируется для тестов; нет бинарника → `EngineUnavailableError`; **Phase 5 началась**; pytest зелёный | `81c590f` | `test(engine): stockfish (skip if absent)` |
+| 2026-06-09 | `test(engine): stockfish (skip if absent)`: ★ `test_engine_stockfish.py` (15 шт + 1 skip) — разбор оценок на фейковом движке (`.relative`/мат/глубина), жизненный цикл процесса (ленивый запуск/идемпотентный close/контекстный менеджер/переоткрытие), деградация в `EngineUnavailableError`; интеграция с реальным Stockfish пропускается без бинарника (`shutil.which`); pytest зелёный (341 passed, 2 skipped) | `3fd4183` | `feat(arena): hint protocol` ★ |
