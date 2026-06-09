@@ -22,8 +22,11 @@
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
 
-- Установка: `pip install -e ".[dev]"` (Python 3.11+)
-- Тесты: `pytest` (пока только smoke-тест каркаса)
+- Установка: `pip install -e ".[dev]"` (Python 3.11+).
+- **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
+  тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
+  (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 19 passed: config + catalog + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
