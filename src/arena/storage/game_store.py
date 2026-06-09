@@ -17,12 +17,16 @@ from pathlib import Path
 
 from arena.core import build_pgn
 from arena.models import GameRecord
+from arena.report import render_report_html
 
 # Имя канонического файла партии внутри её папки (D-004).
 GAME_JSON_NAME = "game.json"
 
 # Имя экспортированного PGN внутри папки партии.
 PGN_NAME = "game.pgn"
+
+# Имя self-contained HTML-отчёта внутри папки партии.
+REPORT_NAME = "report.html"
 
 # Корень для артефактов партий по умолчанию (совпадает с ``OutputConfig.games_dir``).
 DEFAULT_GAMES_ROOT = "games"
@@ -94,6 +98,25 @@ def export_pgn(
     target = game_dir(record.id, games_root=games_root) / PGN_NAME
     pgn = build_pgn(record, include_reasoning=include_reasoning)
     _atomic_write(target, pgn + "\n")
+    return target
+
+
+def export_report(
+    record: GameRecord,
+    *,
+    games_root: str | Path = DEFAULT_GAMES_ROOT,
+    include_boards: bool = True,
+) -> Path:
+    """Сгенерировать ``games_root/<id>/report.html`` из ``record`` и вернуть путь.
+
+    HTML-отчёт — производный артефакт (D-004): он собирается из ``GameRecord``
+    через ``report.render_report_html`` и пишется на диск атомарно. Отчёт
+    самодостаточен — доски встроены как inline SVG (D-013), внешних файлов нет.
+    ``include_boards=False`` отключает рендер досок (лёгкий отчёт без картинок).
+    """
+    target = game_dir(record.id, games_root=games_root) / REPORT_NAME
+    html = render_report_html(record, include_boards=include_boards)
+    _atomic_write(target, html)
     return target
 
 
