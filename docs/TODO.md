@@ -69,6 +69,9 @@
 - [ ] `feat(web): websocket live view` ★ — трансляция событий хода/доски/рассуждения.
 - [ ] `feat(web): games list and report view` ★ — `GET /games`, `GET /games/{id}`.
 
+## Доп. изменения (вне исходных фаз)
+- [x] `feat(prompts): optional legal-moves list` ★ (D-021) — флаг `include_legal_moves` (дефолт `false`): ИИ не получает список легальных ходов, легальность проверяется после хода (ретрай D-006). Сквозной `config.yaml`→`ArenaConfig`/`PlayerSettings`→`system`/`context`.
+
 ## Phase 7 — Закалка
 - [ ] `feat(providers): retry with backoff` — устойчивость к rate-limit/сетевым сбоям.
 - [ ] `feat(obs): logging with key masking` — структурное логирование, маскирование секретов.

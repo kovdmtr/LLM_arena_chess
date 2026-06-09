@@ -20,6 +20,21 @@ from arena.models import MessageRecord
 # промпта и тестов. Совпадают с ключами, которые разбирает ``parse_response``.
 RESPONSE_KEYS: tuple[str, ...] = ("reasoning", "move", "request_hint", "resign")
 
+# Условные фрагменты промпта под `include_legal_moves` (D-021): с/без списка
+# легальных ходов. Подставляются в шаблон вместе с лимитами партии.
+_LEGAL_MOVES_ON = {
+    "moves_clause": "the full list of legal moves in SAN, ",
+    "legality": "It MUST be one of the legal moves provided.",
+    "correction_detail": "the reason and the legal moves",
+    "strike_tail": "so always pick a move from the provided list.",
+}
+_LEGAL_MOVES_OFF = {
+    "moves_clause": "",
+    "legality": "It MUST be legal in the current position.",
+    "correction_detail": "the reason",
+    "strike_tail": "so make sure your move is legal before you answer.",
+}
+
 # Шаблон промпта. Плейсхолдеры подставляются из настроек партии; сам текст
 # статичен в пределах одной игры (пригоден для prompt caching, D-017).
 _TEMPLATE = """\
@@ -29,16 +44,14 @@ classical chess.
 
 How the game works:
 - On every turn you receive the current position: your color and move number, the \
-position in FEN, the full list of legal moves in SAN, the PGN so far, and both \
-players' previous explanations.
-- You choose exactly one move. It MUST be one of the legal moves provided. Give the \
-move in standard algebraic notation (SAN, e.g. "Nf3", "exd5", "O-O", "e8=Q+") or in \
-UCI coordinate notation (e.g. "g1f3", "e7e8q"). Do not pass; skipping a move is not \
-allowed.
-- If your move is illegal or cannot be understood, you receive a correction (the \
-reason and the legal moves) and must try again. {retries} illegal attempts in a row \
-on the same turn lose the game on technical grounds, so always pick a move from the \
-provided list.
+position in FEN, {moves_clause}the PGN so far, and both players' previous \
+explanations.
+- You choose exactly one move. {legality} Give the move in standard algebraic \
+notation (SAN, e.g. "Nf3", "exd5", "O-O", "e8=Q+") or in UCI coordinate notation \
+(e.g. "g1f3", "e7e8q"). Do not pass; skipping a move is not allowed.
+- If your move is illegal or cannot be understood, you receive a correction \
+({correction_detail}) and must try again. {retries} illegal attempts in a row on \
+the same turn lose the game on technical grounds, {strike_tail}
 
 Hints:
 - You have {hints} engine hints for the entire game. Set "request_hint" to true to \
@@ -65,20 +78,31 @@ Example of a normal move:
 
 
 def build_system_prompt(
-    *, hints_per_player: int = 3, illegal_move_retries: int = 3
+    *,
+    hints_per_player: int = 3,
+    illegal_move_retries: int = 3,
+    include_legal_moves: bool = True,
 ) -> str:
     """Собрать текст системного промпта под лимиты партии.
 
     ``hints_per_player`` и ``illegal_move_retries`` берутся из настроек партии
     (``PlayerSettings``) и в пределах одной игры неизменны, поэтому промпт остаётся
-    статичным (кэшируемым, D-017). Возвращает готовый текст без завершающего перевода
-    строки.
+    статичным (кэшируемым, D-017). ``include_legal_moves`` (D-021) переключает
+    формулировки: с ним промпт обещает список легальных ходов в контексте, без него
+    — требует, чтобы модель сама подобрала легальный ход (проверка после ответа).
+    Возвращает готовый текст без завершающего перевода строки.
     """
-    return _TEMPLATE.format(hints=hints_per_player, retries=illegal_move_retries)
+    variant = _LEGAL_MOVES_ON if include_legal_moves else _LEGAL_MOVES_OFF
+    return _TEMPLATE.format(
+        hints=hints_per_player, retries=illegal_move_retries, **variant
+    )
 
 
 def system_message(
-    *, hints_per_player: int = 3, illegal_move_retries: int = 3
+    *,
+    hints_per_player: int = 3,
+    illegal_move_retries: int = 3,
+    include_legal_moves: bool = True,
 ) -> MessageRecord:
     """Обёртка ``build_system_prompt`` в ``MessageRecord`` с ролью ``system``.
 
@@ -87,5 +111,6 @@ def system_message(
     content = build_system_prompt(
         hints_per_player=hints_per_player,
         illegal_move_retries=illegal_move_retries,
+        include_legal_moves=include_legal_moves,
     )
     return MessageRecord(role="system", content=content)

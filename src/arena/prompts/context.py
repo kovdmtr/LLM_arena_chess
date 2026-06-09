@@ -5,7 +5,9 @@
 
 - её цвет и номер хода;
 - FEN текущей позиции;
-- полный список легальных ходов в SAN (ход выбирается строго из него — D-005);
+- (опц., ``include_legal_moves``, D-021) полный список легальных ходов в SAN; по
+  умолчанию **не** кладётся — модель ходит по FEN/PGN, а легальность проверяется
+  уже после ответа (ретрай при нелегальном ходе, D-006);
 - PGN партии на текущий момент (снимок через ``core.build_pgn`` — единый источник);
 - объяснения **обеих** сторон по сыгранным ходам (для логов и контекста соперника);
 - сколько подсказок осталось у этой стороны;
@@ -33,14 +35,17 @@ def build_context(
     *,
     retry: IllegalAttempt | None = None,
     hint: HintRecord | None = None,
+    include_legal_moves: bool = True,
 ) -> str:
     """Собрать текст контекста хода для стороны, чья сейчас очередь.
 
     Сторона и номер хода берутся из ``board`` (``turn``/``fullmove_number``), остаток
     подсказок — из ``game`` (лимит минус израсходованное стороной). ``retry`` (если
     задан) добавляет блок коррекции нелегального хода; ``hint`` (если задан) —
-    инъекцию подсказки движка. Возвращает готовый текст без завершающего перевода
-    строки.
+    инъекцию подсказки движка. ``include_legal_moves`` (D-021) управляет тем, кладём
+    ли в контекст список легальных ходов (``False`` — модель ходит «вслепую» по
+    FEN/PGN, легальность проверяется после ответа). Возвращает готовый текст без
+    завершающего перевода строки.
     """
     side: Side = board.turn  # type: ignore[assignment]
     sections: list[str] = []
@@ -50,9 +55,8 @@ def build_context(
         f"It is move {board.fullmove_number}, your turn."
     )
     sections.append(f"Current position (FEN):\n{board.fen()}")
-    sections.append(
-        "Legal moves (SAN):\n" + " ".join(board.legal_moves_san())
-    )
+    if include_legal_moves:
+        sections.append("Legal moves (SAN):\n" + " ".join(board.legal_moves_san()))
     sections.append("Game so far (PGN):\n" + build_pgn(game, include_reasoning=False))
     sections.append(_history_section(game))
     sections.append(f"Hints remaining: {_hints_remaining(game, side)}")
@@ -60,7 +64,7 @@ def build_context(
     if hint is not None:
         sections.append(_hint_section(hint))
     if retry is not None:
-        sections.append(_retry_section(retry))
+        sections.append(_retry_section(retry, include_legal_moves))
 
     sections.append(
         'Reply with one JSON object: '
@@ -75,9 +79,12 @@ def context_message(
     *,
     retry: IllegalAttempt | None = None,
     hint: HintRecord | None = None,
+    include_legal_moves: bool = True,
 ) -> MessageRecord:
     """Обернуть ``build_context`` в ``MessageRecord`` с ролью ``user``."""
-    content = build_context(game, board, retry=retry, hint=hint)
+    content = build_context(
+        game, board, retry=retry, hint=hint, include_legal_moves=include_legal_moves
+    )
     return MessageRecord(role="user", content=content)
 
 
@@ -120,9 +127,18 @@ def _hint_section(hint: HintRecord) -> str:
     )
 
 
-def _retry_section(retry: IllegalAttempt) -> str:
-    """Блок коррекции после нелегального/нераспознанного хода (D-006)."""
+def _retry_section(retry: IllegalAttempt, include_legal_moves: bool) -> str:
+    """Блок коррекции после нелегального/нераспознанного хода (D-006).
+
+    Финальная подсказка зависит от ``include_legal_moves`` (D-021): со списком —
+    «выбери из показанного выше», без списка — «дай легальный для позиции ход».
+    """
+    instruction = (
+        "Choose one move from the legal moves listed above."
+        if include_legal_moves
+        else "Reply with a move that is legal in the current position."
+    )
     return (
         f'Your previous answer "{retry.raw}" was rejected: {retry.reason}\n'
-        "Choose one move from the legal moves listed above."
+        f"{instruction}"
     )

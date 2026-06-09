@@ -175,6 +175,7 @@ class GameRunner:
         self._system_message = system_message(
             hints_per_player=game.settings.hints_per_player,
             illegal_move_retries=game.settings.illegal_move_retries,
+            include_legal_moves=game.settings.include_legal_moves,
         )
 
     @property
@@ -291,7 +292,13 @@ class GameRunner:
         history = self._game.messages[side]
         if not history:  # системную реплику логируем один раз на сторону
             history.append(self._system_message)
-        context = context_message(self._game, self._board, retry=retry, hint=hint)
+        context = context_message(
+            self._game,
+            self._board,
+            retry=retry,
+            hint=hint,
+            include_legal_moves=self._game.settings.include_legal_moves,
+        )
         history.append(context)
 
         response = self._players[side].respond([self._system_message, context])

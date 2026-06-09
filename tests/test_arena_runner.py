@@ -164,6 +164,29 @@ def test_player_receives_self_contained_system_plus_context():
     assert len(players["white"].seen) == 2  # два хода белых
 
 
+def test_legal_moves_list_omitted_by_default():
+    # По умолчанию (PlayerSettings.include_legal_moves=False, D-021) список легальных
+    # ходов в промпт не попадает — ни в системную часть, ни в контекст хода.
+    runner, players, _ = _runner(FOOLS_MATE_WHITE, FOOLS_MATE_BLACK)
+    runner.play()
+    system, context = players["white"].seen[0]
+    assert "Legal moves (SAN):" not in context.content
+    assert "the full list of legal moves" not in system.content
+
+
+def test_legal_moves_list_present_when_enabled():
+    # Флаг включает список обратно — и в системном промпте, и в контексте хода.
+    runner, players, _ = _runner(
+        FOOLS_MATE_WHITE,
+        FOOLS_MATE_BLACK,
+        settings=PlayerSettings(include_legal_moves=True),
+    )
+    runner.play()
+    system, context = players["white"].seen[0]
+    assert "Legal moves (SAN):" in context.content
+    assert "the full list of legal moves" in system.content
+
+
 # --- события -----------------------------------------------------------------
 
 def test_emits_events_in_order():

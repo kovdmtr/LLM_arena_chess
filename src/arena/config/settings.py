@@ -27,6 +27,7 @@ class ArenaConfig(BaseModel):
     illegal_move_retries: int = 3
     hints_per_player: int = 3
     auto_claim_draws: bool = True
+    include_legal_moves: bool = False  # класть ли список легальных ходов в промпт (D-021)
 
 
 class EngineConfig(BaseModel):
