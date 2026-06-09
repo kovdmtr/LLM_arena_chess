@@ -9,19 +9,22 @@
 ## Текущее состояние
 
 - **Фаза:** Phase 3 закрыта; **Phase 4 (артефакты) в работе.** Phase 0–2 закрыты.
-  Готов `GameRunner` целиком, слой `storage` (`game.json` + экспорт `game.pgn` +
-  проверка, что PGN открывается как валидная партия). Дальше в Phase 4 — рендер
-  доски (SVG), HTML-отчёт и генерация `report.html` из `game.json`.
-- **Последняя завершённая задача:** `test(storage): pgn opens as valid game` —
-  `tests/test_storage_game_store.py` (+6, всего 31): экспортированный `export_pgn`
-  **файл с диска** перечитывается `chess.pgn.read_game` и сверяется с `GameRecord`
-  (SAN-последовательность, UCI, легальное перепроигрывание до мата, теги
-  Result/Termination, ничейная партия, round-trip `save_game`→`load_game`→`export_pgn`).
-  Отличие от `test_pgn_export.py` — там тестируется строка `build_pgn`, здесь
-  именно записанный на диск артефакт. Фикстура «детского мата» строится через
-  `python-chess` (согласованные uci/fen).
-- **Следующая задача:** `feat(report): board image rendering` из `docs/TODO.md`
-  (Phase 4) — рендер доски в SVG (опц. PNG через cairosvg).
+  Готов `GameRunner`, слой `storage` (`game.json` + `game.pgn` + проверка валидности
+  PGN) и слой `report`: рендер доски (SVG/опц. PNG) и HTML-шаблон отчёта (Jinja2).
+  Дальше в Phase 4 — генерация `report.html` из `game.json` (запись на диск) и
+  smoke-тест рендера.
+- **Последняя завершённая задача:** `feat(report): html report template` —
+  `report/template.py` (`render_report_html`) + Jinja2-шаблон
+  `report/templates/report.html.j2`: самодостаточный HTML (шапка с игроками/итогом,
+  лента ходов с inline-SVG досками из `board_image`, рассуждения, бейджи
+  классификации/оценки ★ — только если заполнены пост-анализом, подсказки). Автоэкран
+  пользовательского текста (имена/рассуждения), SVG помечается `Markup` safe. Перед
+  ней — `feat(report): board image rendering` (`report/board_image.py`:
+  `render_board_svg`/`render_move_svg` поверх `chess.svg`, подсветка хода и шаха,
+  опц. PNG через `cairosvg` с деградацией `PngUnavailableError`).
+- **Следующая задача:** `feat(report): render report from game.json` из `docs/TODO.md`
+  (Phase 4) — генерация self-contained `games/<id>/report.html` из загруженного
+  `game.json` (слой `storage`/CLI, запись на диск).
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -30,7 +33,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 292 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + arena e2e + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 317 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template + arena e2e + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -75,3 +78,5 @@
 | 2026-06-09 | `test(arena): e2e with fake players`: `test_arena_e2e.py` (6 шт) — фейковые игроки доигрывают мат Шольяра, `save_game`→`load_game` round-trip, детали ходов, сборка PGN из загруженной записи, путь файла, без секретов; **Phase 3 закрыта**; pytest зелёный (279 passed) | `adc6ec4` | `feat(storage): export game.pgn` |
 | 2026-06-09 | `feat(storage): export game.pgn` (D-004): `storage.export_pgn` — PGN из `GameRecord` через `core.build_pgn` в `games/<id>/game.pgn` (атомарно, финальный `\n`, флаг `include_reasoning`); общий хелпер `_atomic_write` (переиспользует `save_game`); экспорт `PGN_NAME`/`export_pgn`; тесты `test_storage_game_store.py` (+7, всего 25); **Phase 4 началась**; pytest зелёный (286 passed) | `a4bdcb1` | `test(storage): pgn opens as valid game` |
 | 2026-06-09 | `test(storage): pgn opens as valid game`: `test_storage_game_store.py` (+6, всего 31) — экспортированный **файл** перечитывается `chess.pgn.read_game` и сверяется с `GameRecord` (SAN/UCI, легальное перепроигрывание до мата, теги Result/Termination, ничья, round-trip `save→load→export`); фикстура «детского мата» через `python-chess`; pytest зелёный (292 passed) | `832dbe9` | `feat(report): board image rendering` |
+| 2026-06-09 | `feat(report): board image rendering` (D-005): `report/board_image.py` — `render_board_svg(fen)`/`render_move_svg(MoveRecord)` поверх `chess.svg` (подсветка последнего хода и шаха, ориентация, размер); опц. PNG `svg_to_png` через `cairosvg` (extra `report-png`) с деградацией `PngUnavailableError`, `png_available`; тесты `test_report_board_image.py` (10, +1 skip без cairosvg); pytest зелёный (302 passed, 1 skipped) | `acd2d0c` | `feat(report): html report template` |
+| 2026-06-09 | `feat(report): html report template`: `report/template.py` (`render_report_html`) + `report/templates/report.html.j2` — самодостаточный HTML: шапка (игроки/модели/итог), лента ходов с inline-SVG досками, рассуждения, бейджи классификации/оценки ★ (если есть), подсказки; автоэкран пользовательского текста, SVG как `Markup`; тесты `test_report_template.py` (15); pytest зелёный (317 passed, 1 skipped) | _pending_ | `feat(report): render report from game.json` |

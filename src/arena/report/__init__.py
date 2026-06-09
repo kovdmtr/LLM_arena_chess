@@ -8,6 +8,7 @@ from arena.report.board_image import (
     render_move_svg,
     svg_to_png,
 )
+from arena.report.template import render_report_html
 
 __all__ = [
     "DEFAULT_SIZE",
@@ -15,5 +16,6 @@ __all__ = [
     "png_available",
     "render_board_svg",
     "render_move_svg",
+    "render_report_html",
     "svg_to_png",
 ]
