@@ -69,8 +69,9 @@ class AnthropicProvider(LLMProvider):
             "model": self.model.id,
             "messages": payload,
             "max_tokens": params.max_tokens,
-            "temperature": params.temperature,
         }
+        if params.temperature is not None:  # None → не передаём (D: устарел у некоторых моделей)
+            kwargs["temperature"] = params.temperature
         if system_text:
             kwargs["system"] = [
                 {

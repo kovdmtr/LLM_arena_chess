@@ -62,9 +62,15 @@ class ProviderConfig(BaseModel):
 
 
 class ModelParams(BaseModel):
-    """Параметры генерации для конкретной модели."""
+    """Параметры генерации для конкретной модели.
 
-    temperature: float = 0.2
+    ``temperature`` можно отключить значением ``null`` в ``config.yaml`` — тогда
+    провайдер не передаёт его в API. Это нужно для моделей, у которых параметр
+    запрещён/устарел (например, ``claude-opus-4-8`` отвечает 400 на любой
+    ``temperature``). По умолчанию остаётся ``0.2``.
+    """
+
+    temperature: float | None = 0.2
     max_tokens: int = 1024
 
 

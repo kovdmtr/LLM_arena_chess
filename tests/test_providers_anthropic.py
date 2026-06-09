@@ -104,6 +104,18 @@ def test_complete_returns_text_and_passes_params(monkeypatch):
     assert kwargs["messages"] == [{"role": "user", "content": "your move"}]
 
 
+def test_complete_omits_temperature_when_none(monkeypatch):
+    captured: dict = {}
+    _install_fake(monkeypatch, captured, response=_response("ok"))
+    provider = AnthropicProvider(_model("claude-opus-4-8"))
+
+    provider.complete(_msgs(), ModelParams(temperature=None, max_tokens=42))
+
+    kwargs = captured["create_kwargs"]
+    assert "temperature" not in kwargs  # None → параметр не передаётся (модель его отвергает)
+    assert kwargs["max_tokens"] == 42
+
+
 def test_system_prefix_cached(monkeypatch):
     captured: dict = {}
     _install_fake(monkeypatch, captured, response=_response("ok"))

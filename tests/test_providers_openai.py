@@ -107,6 +107,18 @@ def test_complete_returns_text_and_passes_params(monkeypatch):
     ]
 
 
+def test_complete_omits_temperature_when_none(monkeypatch):
+    captured: dict = {}
+    _install_fake(monkeypatch, captured, response=_response("ok"))
+    provider = OpenAIProvider(_model("gpt-4o"))
+
+    provider.complete(_msgs(), ModelParams(temperature=None, max_tokens=42))
+
+    kwargs = captured["create_kwargs"]
+    assert "temperature" not in kwargs  # None → параметр не передаётся
+    assert kwargs["max_tokens"] == 42
+
+
 def test_client_created_with_api_key_lazily_and_cached(monkeypatch):
     captured: dict = {}
     _install_fake(monkeypatch, captured, response=_response("ok"))

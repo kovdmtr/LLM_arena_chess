@@ -46,13 +46,15 @@ class OpenAIProvider(LLMProvider):
     ) -> str:
         client = self._ensure_client()
         payload = [{"role": m.role, "content": m.content} for m in messages]
+        kwargs: dict = {
+            "model": self.model.id,
+            "messages": payload,
+            "max_tokens": params.max_tokens,
+        }
+        if params.temperature is not None:  # None → не передаём (см. ModelParams)
+            kwargs["temperature"] = params.temperature
         try:
-            response = client.chat.completions.create(
-                model=self.model.id,
-                messages=payload,
-                temperature=params.temperature,
-                max_tokens=params.max_tokens,
-            )
+            response = client.chat.completions.create(**kwargs)
         except Exception as exc:  # SDK/транспорт — единая ошибка слоя
             raise ProviderError(
                 mask_secret(
