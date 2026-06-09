@@ -152,5 +152,21 @@ D-007) неизменен в течение партии и шлётся на к
 префикса заметно экономит входные токены. `ephemeral` — единственный публичный тип
 кэша; ставится на конец статичной части, чтобы закэшировать весь префикс до неё.
 
+## D-018 — Gemini: system_instruction отдельно + маппинг роли assistant→model
+**Дата:** 2026-06-09 · **Статус:** принято
+**Решение:** в `GeminiProvider` (`google-genai`, `generate_content`) system-реплики
+(`role="system"`) не передаются в `contents`, а собираются — объединением через
+`\n\n` — в `system_instruction` параметра `GenerateContentConfig` (как и у Anthropic,
+system — top-level параметр). Роль ассистента в `contents` называется `model`
+(а не `assistant`), `user` остаётся `user`; каждое сообщение — `{"role", "parts":
+[{"text"}]}`. Параметры генерации (`temperature`, `max_tokens`→`max_output_tokens`)
+тоже идут в `GenerateContentConfig`. Ответ — `response.text` (конкатенация текстовых
+частей); пустой/`None` → `ProviderError`. Без system-реплик `system_instruction=None`.
+**Почему:** Gemini API структурно отличается от Chat Completions именованием ролей
+и местом системной инструкции. В отличие от Anthropic, отдельного prompt caching
+здесь не задаём: в `google-genai` кэширование префикса требует явного explicit-cache
+API (`client.caches`), что выходит за рамки этой задачи и может быть добавлено в
+Phase 7 («закалка») при необходимости.
+
 ## Открытые вопросы
 _Нет — все решения зафиксированы._

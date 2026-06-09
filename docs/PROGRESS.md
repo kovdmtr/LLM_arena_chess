@@ -8,27 +8,28 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 2 — Провайдеры LLM. Базовый интерфейс, фабрика, OpenAI и
-  Anthropic готовы; дальше gemini.
-- **Последняя завершённая задача:** `feat(providers): anthropic` —
-  `providers/anthropic_provider.py`: `AnthropicProvider(LLMProvider)` поверх SDK
-  `anthropic` (Messages API). `complete` выносит system-реплики из `messages` в
-  отдельный параметр `system` (Messages API в `messages` принимает только
-  `user`/`assistant`), объединяя их через `\n\n`, и помечает системный префикс
-  `cache_control: ephemeral` — prompt caching статичной части (D-017). Остальной
-  диалог транслируется в `client.messages.create` вместе с `max_tokens`/`temperature`
-  из `ModelParams`; имя модели — `ResolvedModel.id`. Ответ собирается как
-  конкатенация текста всех `text`-блоков `response.content`; пустой набор → ошибка.
-  Клиент `anthropic.Anthropic(api_key=...)` создаётся **лениво и кэшируется**, ошибки
-  SDK оборачиваются в `ProviderError` с маскированием ключа через `mask_secret`.
-  Регистрация `@register_provider("anthropic")` + импорт в `providers/__init__`.
-  Тесты `test_providers_anthropic.py` (12 шт, мок `anthropic.Anthropic`: вынос/слияние
-  system + cache_control, отсутствие `system` без system-реплик, конкатенация
-  блоков, трансляция параметров, ленивое кэширование, обёртка ошибок + маскирование,
-  пустой/битый ответ, `repr` без ключа).
-- **Следующая задача:** `feat(providers): gemini` из `docs/TODO.md` (Phase 2) —
-  реализация поверх `google-genai` SDK, регистрация через
-  `register_provider("gemini")`, переиспользовать `mask_secret`.
+- **Фаза:** Phase 2 — Провайдеры LLM. Базовый интерфейс, фабрика, OpenAI,
+  Anthropic и Gemini готовы — все три провайдера реализованы. Дальше:
+  `test(providers): mocked transport` и `feat(arena): model player`.
+- **Последняя завершённая задача:** `feat(providers): gemini` —
+  `providers/gemini_provider.py`: `GeminiProvider(LLMProvider)` поверх SDK
+  `google-genai` (`client.models.generate_content`). `complete` выносит
+  system-реплики в `system_instruction` параметра `GenerateContentConfig` (через
+  `\n\n`, как у Anthropic), маппит роль `assistant`→`model` в `contents`
+  (`{"role", "parts": [{"text"}]}`), `temperature`/`max_tokens`(→`max_output_tokens`)
+  тоже в конфиг; имя модели — `ResolvedModel.id`. Ответ — `response.text`;
+  пустой/`None` → `ProviderError`. Клиент `genai.Client(api_key=...)` создаётся
+  **лениво и кэшируется**, ошибки SDK оборачиваются в `ProviderError` с маскированием
+  ключа через `mask_secret`. Регистрация `@register_provider("gemini")` + импорт в
+  `providers/__init__`. Без отдельного prompt caching (D-018: explicit-cache API —
+  вне рамок задачи). Тесты `test_providers_gemini.py` (12 шт, мок `genai.Client`:
+  system_instruction/слияние, маппинг ролей, отсутствие system_instruction,
+  трансляция параметров, ленивое кэширование, обёртка ошибок + маскирование,
+  пустой/`None`/битый ответ, `repr` без ключа). D-018 в DECISIONS.
+- **Следующая задача:** `test(providers): mocked transport` из `docs/TODO.md`
+  (Phase 2) — общий набор тестов парсинга ответов/обработки ошибок на моках.
+  Примечание: каждый провайдер уже покрыт своими мок-тестами; оценить, нужен ли
+  отдельный кросс-провайдерный блок или пункт закрывается уже написанным.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -37,7 +38,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 143 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 155 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -69,3 +70,4 @@
 | 2026-06-09 | `feat(providers): base interface and factory`: `providers/base.py` (`LLMProvider.complete`, `ProviderError`, реестр + `register_provider`/`create_provider`); фабрика по имени, fail-fast, ключ не в `repr`; экспорт из `arena.providers`; тесты `test_providers_base.py` (10 шт); pytest зелёный (123 passed) | `c758e68` | `feat(providers): openai` |
 | 2026-06-09 | `feat(providers): openai`: `providers/openai_provider.py` (`OpenAIProvider` поверх SDK `openai`, Chat Completions); ленивое кэширование клиента, обёртка ошибок SDK в `ProviderError`, утилита `mask_secret` в `base.py` (маскирование ключа); регистрация через `@register_provider("openai")` + импорт в `__init__`; тесты `test_providers_openai.py` (8 шт на моках); pytest зелёный (131 passed) | `fd70e0e` | `feat(providers): anthropic` |
 | 2026-06-09 | `feat(providers): anthropic`: `providers/anthropic_provider.py` (`AnthropicProvider` поверх SDK `anthropic`, Messages API); system вынесен из `messages` в параметр `system` с `cache_control: ephemeral` (prompt caching, D-017), конкатенация text-блоков ответа, ленивое кэширование клиента, обёртка ошибок + `mask_secret`; регистрация `@register_provider("anthropic")` + импорт в `__init__`; тесты `test_providers_anthropic.py` (12 шт на моках); D-017 в DECISIONS; pytest зелёный (143 passed) | `f7d3ab1` | `feat(providers): gemini` |
+| 2026-06-09 | `feat(providers): gemini`: `providers/gemini_provider.py` (`GeminiProvider` поверх SDK `google-genai`, `generate_content`); system → `system_instruction`, маппинг роли `assistant`→`model`, параметры в `GenerateContentConfig`, ответ `response.text`, ленивое кэширование клиента, обёртка ошибок + `mask_secret`; регистрация `@register_provider("gemini")` + импорт в `__init__`; тесты `test_providers_gemini.py` (12 шт на моках); D-018 в DECISIONS; **все 3 провайдера готовы**; pytest зелёный (155 passed) | _pending_ | `test(providers): mocked transport` |
