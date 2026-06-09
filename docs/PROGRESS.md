@@ -35,13 +35,18 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 341 passed, 2 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template + report render from fixture + engine stockfish (real-binary skip) + arena e2e + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 342 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
 ## Открытые хвосты / заметки
 
-- Stockfish — опциональная зависимость; на машине разработки бинарник пока не проверен.
+- Stockfish (опциональная зависимость) **установлен и проверен** на машине разработки:
+  пребилт Stockfish 18 (bmi2) лежит в `tools/bin/stockfish.exe` (в git не коммитится,
+  `.gitignore`). Корневой `conftest.py` добавляет `tools/bin` в `PATH` только на время
+  тестов, поэтому интеграционный тест движка теперь **выполняется** (не skip). Для
+  прогона приложения вне pytest движок берётся из PATH или `engine.path` в `config.yaml`
+  (provisioning PATH вне тестов — на усмотрение пользователя; систему не меняли).
 - GitHub-remote не подключён (не требуется для локальной работы; можно добавить позже).
 
 ## Журнал сессий
