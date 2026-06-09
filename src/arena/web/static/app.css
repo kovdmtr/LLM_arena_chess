@@ -34,3 +34,12 @@ body {
   font-weight: 600;
 }
 .button:hover { filter: brightness(1.05); }
+.game-form { display: grid; gap: 1rem; max-width: 28rem; margin-top: 1rem; }
+.game-form .field { display: grid; gap: .35rem; }
+.game-form label { font-weight: 600; }
+.game-form select {
+  padding: .5rem; border: 1px solid var(--line); border-radius: .4rem;
+  font-size: 1rem; background: #fff;
+}
+.new-game .hint, .new-game .empty { color: var(--muted); font-size: .9rem; }
+.new-game code { background: #f5f5f4; padding: .1rem .3rem; border-radius: .25rem; }

@@ -16,18 +16,18 @@
   (`best_move`/`evaluate`, деградация без бинарника) и ★ слой `analysis/`
   (centipawn-loss классификация + `AnalysisSummary` + LLM-комментарий ключевых
   моментов, D-009). Дальше — Phase 6 (★ веб-интерфейс).
-- **Последняя завершённая задача:** `feat(web): fastapi app skeleton` ★ — каркас Phase 6:
-  `web/app.py` (`create_app(settings=None)` + модульный `app` для `uvicorn arena.web.app:app`):
-  health-эндпоинт (`/health` → status/service/version), монтирование статики `/static`
-  (`web/static/app.css`), Jinja2-шаблоны (`web/templates/base.html` + `index.html`,
-  стартовая страница `/`); `settings` кладётся в `app.state.settings` (каркасу не нужен,
-  загрузится лениво следующими задачами), `templates` в `app.state.templates`. Экспорт
-  `create_app`/`APP_TITLE`/`APP_VERSION` из `arena.web`. Тесты `test_web_app.py` (5, через
-  `TestClient`). До неё — `feat(analysis): llm commentary of key moments` ★ (закрыла Phase 5).
-- **Следующая задача:** `feat(web): model selection page` ★ — страница выбора моделей из
-  каталога (`config.ModelCatalog`), форма выбора белых/чёрных. Дальше по Phase 6:
-  `start game endpoint`, `websocket live view`, `games list and report view` (последний
-  переиспользует плеер из отчёта, см. ROADMAP).
+- **Последняя завершённая задача:** `feat(web): model selection page` ★ — страница
+  `GET /games/new`: рендерит каталог моделей формой выбора белых/чёрных (два `<select>`,
+  отправка на `POST /games` — следующая задача). Модели без API-ключа показываются, но
+  `disabled` и помечены «ключ не задан»; пустой каталог → плейсхолдер. Каталог строится
+  лениво `_get_catalog(app)` из `app.state.settings` (или `Settings.load()`), кэшируется
+  в `app.state.catalog` (один раз на приложение). Ключ в HTML не утекает (D-003, под тестом).
+  Шаблон `new_game.html` + стили формы; индекс ведёт на `/games/new`. Тесты
+  `test_web_model_selection.py` (6). До неё — `feat(web): fastapi app skeleton` ★.
+- **Следующая задача:** `feat(web): start game endpoint` ★ — `POST /games`: принять выбор
+  белых/чёрных, резолвить модели через каталог (fail-fast без ключа), запустить
+  `GameRunner`, отдать редирект/ссылку на партию. Дальше по Phase 6: `websocket live view`,
+  `games list and report view` (последний переиспользует плеер из отчёта, см. ROADMAP).
 - **Примечание (среда):** установленный Starlette использует НОВУЮ сигнатуру
   `Jinja2Templates.TemplateResponse(request, name, context)` (старый порядок
   `(name, {"request": ...})` падает `TypeError: unhashable type: 'dict'`). `TestClient`
@@ -41,7 +41,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 404 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template (вкл. сводку ★-анализа + интерактивный плеер) + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + analysis commentary ★ + web app skeleton ★ + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 404 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template (вкл. сводку ★-анализа + интерактивный плеер) + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + analysis commentary ★ + web app skeleton ★ + web model selection ★ + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
 - Запуск веб-UI: `\.venv\Scripts\python.exe -m uvicorn arena.web.app:app` (каркас: `/`, `/health`, `/static`).
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -104,3 +104,4 @@
 | 2026-06-09 | `feat(report): interactive single-board replay` ★: лента картинок → интерактивный плеер (одна доска + кадры, навигация ⏮◀▶⏭/слайдер/клавиши/клик по ходу, панель текущего хода, кликабельные ключевые моменты); self-contained (встроенный JS), `include_boards=False` оставляет навигацию без досок; `template.py` отдаёт `start_board`; ROADMAP: Phase 6 переиспользует плеер; тесты (+5, всего 25); pytest зелёный (386 passed, 1 skipped) | `0ab186e` | `feat(analysis): llm commentary` ★ (опц.) / Phase 6 |
 | 2026-06-09 | `feat(analysis): llm commentary of key moments` ★ (опц.): `analysis/commentary.py` (`comment_key_moments`/`build_commentary_prompt` + Protocol `Commenter`/`BestMoveEngine`) — LLM-комментарий каждого ключевого момента из линий движка (оценка POV белых, опц. лучший ход) + рассуждения модели, заполняет `KeyMoment.comment`; мягкая деградация (нет комментатора/analysis → no-op, `ProviderError` → пропуск момента, движок опц.), без секретов в промпте (D-003); **Phase 5 закрыта**; тесты `test_analysis_commentary.py` (13); pytest зелёный (399 passed, 1 skipped) | `6437c7b` | `feat(web): fastapi app skeleton` ★ (Phase 6) |
 | 2026-06-09 | `feat(web): fastapi app skeleton` ★: **Phase 6 началась** — `web/app.py` (`create_app(settings=None)` + модульный `app`): health `/health`, статика `/static` (`app.css`), Jinja2-шаблоны (`base.html`+`index.html`, стартовая `/`); `settings`/`templates` в `app.state`; экспорт из `arena.web`; найдено: Starlette требует новую сигнатуру `TemplateResponse(request, name, context)`; тесты `test_web_app.py` (5, `TestClient`); pytest зелёный (404 passed, 1 skipped) | `f34ff99` | `feat(web): model selection page` ★ |
+| 2026-06-09 | `feat(web): model selection page` ★: `GET /games/new` рендерит каталог моделей формой выбора белых/чёрных (2×`<select>` → `POST /games`); модели без ключа `disabled`+«ключ не задан», пустой каталог → плейсхолдер; каталог лениво через `_get_catalog` (кэш в `app.state.catalog`); ключ в HTML не утекает (D-003, под тестом); `new_game.html`+стили, индекс ведёт на `/games/new`; тесты `test_web_model_selection.py` (6); pytest зелёный (410 passed, 1 skipped) | _pending_ | `feat(web): start game endpoint` ★ |

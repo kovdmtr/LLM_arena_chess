@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="new-game">
+  <h2>Новая партия</h2>
+
+  {% if models %}
+  <form method="post" action="/games" class="game-form">
+    {% for side, label in [("white", "Белые"), ("black", "Чёрные")] %}
+    <div class="field">
+      <label for="{{ side }}">{{ label }}</label>
+      <select id="{{ side }}" name="{{ side }}" required>
+        {% for model in models %}
+        <option value="{{ model.id }}"{% if not model.has_key %} disabled{% endif %}>
+          {{ model.display_name }} ({{ model.provider }}){% if not model.has_key %} — ключ не задан{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endfor %}
+    <button type="submit" class="button">Начать партию</button>
+  </form>
+  <p class="hint">
+    Модели без API-ключа недоступны для выбора — задайте соответствующую переменную
+    в <code>.env</code>.
+  </p>
+  {% else %}
+  <p class="empty">В каталоге нет моделей. Добавьте их в <code>config.yaml</code>.</p>
+  {% endif %}
+</section>
+{% endblock %}
