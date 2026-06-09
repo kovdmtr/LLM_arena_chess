@@ -23,18 +23,19 @@ class _ScriptedPlayer:
         self._info = info
         self._moves = list(moves)
         self._hint_on_first = hint_on_first
-        self._calls = 0
+        self._hinted = False
 
     @property
     def info(self):
         return self._info
 
     def respond(self, messages):
-        request_hint = self._hint_on_first and self._calls == 0
-        self._calls += 1
-        return LLMResponse(
-            reasoning="x", move=self._moves.pop(0), request_hint=request_hint
-        )
+        # Подсказка → раннер перезапрашивает тот же полуход (D-010): не сдвигаем ход
+        # на запрос подсказки, возвращаем тот же; продвигаемся только при реальном ходе.
+        if self._hint_on_first and not self._hinted:
+            self._hinted = True
+            return LLMResponse(reasoning="x", move=self._moves[0], request_hint=True)
+        return LLMResponse(reasoning="x", move=self._moves.pop(0), request_hint=False)
 
 
 class _FakeEngine:
