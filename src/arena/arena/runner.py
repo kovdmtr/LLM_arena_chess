@@ -15,6 +15,17 @@
 применяется к доске и записывается в ``GameRecord``. Параллельно раннер
 испускает события (``on_event``) — их позже потребляет live-просмотр (Phase 6).
 
+Подсказки движка (★, D-010). Если в ответе ``request_hint: true`` и у стороны
+остался лимит подсказок (``hints_per_player`` минус израсходованное) и подключён
+движок, раннер тратит одну подсказку: ``engine.best_move(fen)`` → ``HintRecord``,
+и **перезапрашивает** ход с инъекцией подсказки в контекст. Подсказка остаётся в
+контексте до конца этого полухода (в т.ч. при ретраях нелегального хода) и
+записывается в итоговый ``MoveRecord`` (``hint_used``/``hint``). На один полуход
+выдаётся не более одной подсказки: повторный ``request_hint`` в том же ходу
+игнорируется (бюджет не «прожигается» на одной позиции, цикл ограничен). Если
+движка нет или лимит исчерпан — запрос подсказки игнорируется (подсказка не
+тратится), ход обрабатывается обычным порядком.
+
 Нелегальный/нераспознанный ход обрабатывается по D-006: попытка фиксируется в
 ``IllegalAttempt``, модели возвращается коррекция (причина + легальные ходы) через
 ``context(retry=...)``, и она ходит заново. ``illegal_move_retries`` нелегальных
@@ -36,11 +47,14 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Protocol
 
 from arena.arena.player import ModelPlayer
 from arena.core import Board, MoveParseError, ParsedMove, parse_move
+from arena.engine import EngineUnavailableError
 from arena.models import (
     GameRecord,
+    HintRecord,
     IllegalAttempt,
     LLMResponse,
     MessageRecord,
@@ -50,11 +64,23 @@ from arena.models import (
 )
 from arena.prompts import context_message, system_message
 
+
+class HintEngine(Protocol):
+    """Минимальный контракт движка для подсказок (★, D-010): лучший ход по FEN.
+
+    Раннеру достаточно ``best_move`` — этого хватает и реальному
+    ``StockfishEngine``, и фейку в тестах. Полный анализ (``evaluate``) нужен
+    отдельному слою пост-анализа, не здесь.
+    """
+
+    def best_move(self, fen: str) -> HintRecord: ...
+
 # Типы событий игрового цикла. Это часть контракта с потребителями (live-просмотр,
 # CLI, тесты), поэтому значения стабильны.
 EVENT_GAME_START = "game_start"
 EVENT_TURN_START = "turn_start"
 EVENT_ILLEGAL = "illegal_attempt"
+EVENT_HINT = "hint"
 EVENT_MOVE = "move"
 EVENT_GAME_OVER = "game_over"
 
@@ -128,19 +154,23 @@ class GameRunner:
         board: Board | None = None,
         on_event: Callable[[GameEvent], None] | None = None,
         max_plies: int | None = None,
+        engine: HintEngine | None = None,
     ) -> None:
         """Создать раннер на паре игроков и ``GameRecord``.
 
         ``board`` — стартовая позиция (по умолчанию новая партия); режим заявляемых
         ничьих (D-012) задаётся на самой доске вызывающим. ``on_event`` — колбэк для
         событий цикла. ``max_plies`` — защитный предел числа полуходов (``None`` —
-        без предела; партия и так конечна по правилам ничьих).
+        без предела; партия и так конечна по правилам ничьих). ``engine`` —
+        опциональный движок для подсказок (★, D-010); без него ``request_hint``
+        игнорируется (база работает без Stockfish, D-008).
         """
         self._players = dict(players)
         self._game = game
         self._board = board if board is not None else Board()
         self._on_event = on_event
         self._max_plies = max_plies
+        self._engine = engine
         # Статичный системный промпт под лимиты партии (D-019) — один на всю игру.
         self._system_message = system_message(
             hints_per_player=game.settings.hints_per_player,
@@ -208,15 +238,26 @@ class GameRunner:
         limit = self._game.settings.illegal_move_retries
         attempts: list[IllegalAttempt] = []
         retry: IllegalAttempt | None = None
+        hint: HintRecord | None = None  # подсказка, выданная на этом ходу (D-010)
         while True:
-            response = self._query(side, retry)
+            response = self._query(side, retry, hint)
             if response.resign:
                 self._resign(side)
                 return None
 
+            # Запрос подсказки (★, D-010): не более одной за ход. Если выдана —
+            # перезапрашиваем ход с инъекцией подсказки (это не коррекция → retry
+            # снимаем); иначе (нет движка/лимита) запрос игнорируем и идём дальше.
+            if response.request_hint and hint is None:
+                served = self._serve_hint(side)
+                if served is not None:
+                    hint = served
+                    retry = None
+                    continue
+
             parsed, rejected = self._resolve_move(response)
             if parsed is not None:
-                return self._apply_move(side, parsed, response, attempts)
+                return self._apply_move(side, parsed, response, attempts, hint)
 
             # Нелегальный/нераспознанный ход: фиксируем попытку и просим переходить.
             attempts.append(rejected)
@@ -235,16 +276,22 @@ class GameRunner:
                 return None
             retry = rejected  # коррекция уйдёт в контекст следующей попытки (D-006)
 
-    def _query(self, side: Side, retry: IllegalAttempt | None) -> LLMResponse:
-        """Спросить модель за ``side`` (опц. с коррекцией ``retry``); залогировать диалог.
+    def _query(
+        self,
+        side: Side,
+        retry: IllegalAttempt | None,
+        hint: HintRecord | None = None,
+    ) -> LLMResponse:
+        """Спросить модель за ``side`` (опц. с коррекцией ``retry`` и подсказкой ``hint``).
 
         Модель видит самодостаточный срез ``[system, context]``; в ``GameRecord``
         пишется per-side история (system один раз, затем пары context/assistant).
+        ``hint`` (если выдан на этом ходу, D-010) инъектируется в контекст.
         """
         history = self._game.messages[side]
         if not history:  # системную реплику логируем один раз на сторону
             history.append(self._system_message)
-        context = context_message(self._game, self._board, retry=retry)
+        context = context_message(self._game, self._board, retry=retry, hint=hint)
         history.append(context)
 
         response = self._players[side].respond([self._system_message, context])
@@ -252,6 +299,39 @@ class GameRunner:
             MessageRecord(role="assistant", content=response.model_dump_json())
         )
         return response
+
+    def _hints_remaining(self, side: Side) -> int:
+        """Остаток подсказок стороны: лимит партии минус израсходованное (не ниже 0)."""
+        used = self._game.hints_used.get(side, 0)
+        return max(0, self._game.settings.hints_per_player - used)
+
+    def _serve_hint(self, side: Side) -> HintRecord | None:
+        """Выдать подсказку движка стороне ``side``, израсходовав одну (★, D-010).
+
+        Возвращает ``HintRecord`` и инкрементирует ``hints_used[side]`` только при
+        успешной выдаче. Если движка нет, лимит исчерпан или движок отказал
+        (``EngineUnavailableError``) — возвращает ``None`` и подсказку не тратит
+        (база работает без Stockfish, D-008).
+        """
+        if self._engine is None or self._hints_remaining(side) <= 0:
+            return None
+        try:
+            hint = self._engine.best_move(self._board.fen())
+        except EngineUnavailableError:
+            return None
+        self._game.hints_used[side] += 1
+        self._emit(
+            EVENT_HINT,
+            {
+                "side": side,
+                "ply": len(self._game.moves) + 1,
+                "best_move": hint.best_move,
+                "eval_cp": hint.eval_cp,
+                "mate_in": hint.mate_in,
+                "hints_remaining": self._hints_remaining(side),
+            },
+        )
+        return hint
 
     def _resolve_move(
         self, response: LLMResponse
@@ -276,11 +356,13 @@ class GameRunner:
         parsed: ParsedMove,
         response: LLMResponse,
         attempts: list[IllegalAttempt],
+        hint: HintRecord | None = None,
     ) -> MoveRecord:
         """Применить ход к доске и дописать ``MoveRecord`` в лог; испустить событие.
 
         ``attempts`` — нелегальные попытки, предшествовавшие этому (легальному) ходу;
-        они сохраняются в ``MoveRecord.illegal_attempts`` (спека 3.5).
+        они сохраняются в ``MoveRecord.illegal_attempts`` (спека 3.5). ``hint`` —
+        подсказка, выданная на этом ходу (★, D-010), если была.
         """
         fen_before = self._board.fen()
         self._board.push(parsed.move)
@@ -295,6 +377,8 @@ class GameRunner:
             fen_after=fen_after,
             reasoning=response.reasoning,
             illegal_attempts=attempts,
+            hint_used=hint is not None,
+            hint=hint,
         )
         self._game.moves.append(record)
         self._emit(

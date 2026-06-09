@@ -9,24 +9,28 @@
 ## Текущее состояние
 
 - **Фаза:** Phase 4 (артефакты) закрыта; **Phase 5 (★ движок: подсказки и анализ)
-  в работе.** Phase 0–3 закрыты. Готов `GameRunner`, слой `storage` (`game.json` +
-  `game.pgn` + `report.html`), слой `report` (SVG/опц. PNG + Jinja2-отчёт) и ★ обёртка
-  движка `engine/stockfish.py` (`best_move`/`evaluate`, деградация без бинарника).
-  Дальше в Phase 5 — протокол подсказок в `GameRunner` (D-010) и centipawn-loss
+  в работе.** Phase 0–3 закрыты. Готов `GameRunner` (теперь **с протоколом подсказок**,
+  D-010), слой `storage` (`game.json` + `game.pgn` + `report.html`), слой `report`
+  (SVG/опц. PNG + Jinja2-отчёт) и ★ обёртка движка `engine/stockfish.py`
+  (`best_move`/`evaluate`, деградация без бинарника). Дальше в Phase 5 — centipawn-loss
   анализ с классификацией (D-009).
-- **Последняя завершённая задача:** `test(engine): stockfish (skip if absent)` —
-  `tests/test_engine_stockfish.py` (15 шт + 1 skip): разбор оценок на фейковом движке
-  (без бинарника), `.relative` (POV ходящей стороны), мат → `mate_in`/±большое целое,
-  глубина, жизненный цикл процесса, `EngineUnavailableError`; интеграционный тест с
-  реальным Stockfish пропускается, если бинарника нет в PATH. Перед ней —
-  `feat(engine): stockfish wrapper` (`engine/stockfish.py`: `StockfishEngine` поверх
-  python-chess UCI, D-008; `best_move(fen)→HintRecord`, `evaluate(fen)→cp`, ленивый
-  запуск + контекстный менеджер, `opener` инъектируется для тестов). До них в Phase 4 —
-  `feat(report): render report from game.json` (`storage.export_report` пишет
-  self-contained `games/<id>/report.html`) + smoke-тест рендера из фикстуры.
-- **Следующая задача:** `feat(arena): hint protocol` ★ из `docs/TODO.md` (Phase 5) —
-  `request_hint` расходует 1 из 3 подсказок (D-010): `engine.best_move` → запись
-  `HintRecord`, инъекция подсказки в контекст следующего хода.
+- **Последняя завершённая задача:** `feat(arena): hint protocol` ★ — протокол подсказок
+  движка в `GameRunner` (D-010): `request_hint: true` → `_serve_hint` тратит 1 из 3
+  подсказок (`engine.best_move(fen)→HintRecord`, инкремент `hints_used[side]` **только
+  при фактической выдаче**) и **перезапрашивает** ход с инъекцией подсказки в контекст
+  (через уже готовый `context_message(hint=...)`); подсказка остаётся в контексте до
+  конца полухода (в т.ч. при ретраях), пишется в `MoveRecord` (`hint_used`/`hint`),
+  испускается событие `EVENT_HINT`. Не более одной подсказки на ход; без движка/при
+  исчерпанном лимите/при `EngineUnavailableError` запрос игнорируется (база без
+  Stockfish, D-008). Новый параметр `GameRunner(engine=...)` + Protocol `HintEngine`.
+  Тесты `test_arena_runner.py` (+7): расход и запись `HintRecord`, инъекция в контекст +
+  декремент остатка, событие, деградация без движка / при лимите 0 / при отказе движка,
+  «одна подсказка на ход». До неё — `test(engine): stockfish (skip if absent)` и
+  `feat(engine): stockfish wrapper` (обёртка UCI, D-008).
+- **Следующая задача:** `feat(analysis): centipawn loss and classification` ★ из
+  `docs/TODO.md` (Phase 5) — пороги из конфига, centipawn-loss относительно лучшего
+  хода (`engine.evaluate`), классификация `blunder/…/brilliant`, заполнение
+  `AnalysisSummary` (D-009).
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -35,7 +39,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 342 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 349 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -91,3 +95,4 @@
 | 2026-06-09 | `test(report): report renders from fixture`: `test_report_render_from_fixture.py` (9 шт) — фикстура «детского мата» → `export_report` пишет файл, который self-contained (DOCTYPE/inline SVG/без `<img>`), показывает игроков/ходы/итог, рядом с `game.json`, без `.tmp`, валидирует id, без секретов, рендерится после save→load; **Phase 4 закрыта**; pytest зелёный | `86ecfbe` | `feat(engine): stockfish wrapper` |
 | 2026-06-09 | `feat(engine): stockfish wrapper` (D-008): ★ `engine/stockfish.py` (`StockfishEngine` + `EngineUnavailableError`) поверх python-chess UCI — `best_move(fen)→HintRecord` (uci + eval_cp/mate_in, POV ходящей стороны, D-010), `evaluate(fen)→cp` (мат→±100000 для D-009); ленивый запуск, контекстный менеджер, `opener` инъектируется для тестов; нет бинарника → `EngineUnavailableError`; **Phase 5 началась**; pytest зелёный | `81c590f` | `test(engine): stockfish (skip if absent)` |
 | 2026-06-09 | `test(engine): stockfish (skip if absent)`: ★ `test_engine_stockfish.py` (15 шт + 1 skip) — разбор оценок на фейковом движке (`.relative`/мат/глубина), жизненный цикл процесса (ленивый запуск/идемпотентный close/контекстный менеджер/переоткрытие), деградация в `EngineUnavailableError`; интеграция с реальным Stockfish пропускается без бинарника (`shutil.which`); pytest зелёный (341 passed, 2 skipped) | `3fd4183` | `feat(arena): hint protocol` ★ |
+| 2026-06-09 | `feat(arena): hint protocol` ★ (D-010): протокол подсказок в `GameRunner` — `request_hint`→`_serve_hint` тратит 1 из 3 (только при выдаче), перезапрос с инъекцией подсказки в контекст, запись `MoveRecord.hint_used`/`hint`, событие `EVENT_HINT`; ≤1 подсказка на ход; деградация без движка/при лимите/`EngineUnavailableError` (D-008); параметр `GameRunner(engine=...)` + Protocol `HintEngine`; уточнения в D-010; тесты `test_arena_runner.py` (+7); pytest зелёный (349 passed, 1 skipped) | _pending_ | `feat(analysis): centipawn loss and classification` ★ |

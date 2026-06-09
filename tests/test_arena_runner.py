@@ -6,7 +6,8 @@
 истории сообщений по сторонам, последовательность событий, защитный ``max_plies``;
 ретрай нелегального хода и техническое поражение (D-006); финализацию
 ``result``/``termination`` для обычных окончаний (мат/пат/ничья) и обработку
-``resign`` (D-020).
+``resign`` (D-020); протокол подсказок движка (★, D-010): расход лимита, инъекция
+в контекст, запись ``HintRecord``, деградация без движка.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from datetime import datetime
 from arena.arena import (
     EVENT_GAME_OVER,
     EVENT_GAME_START,
+    EVENT_HINT,
     EVENT_ILLEGAL,
     EVENT_MOVE,
     EVENT_TURN_START,
@@ -25,7 +27,8 @@ from arena.arena import (
 )
 from arena.arena.runner import _normalize_termination
 from arena.core import Board
-from arena.models import LLMResponse, PlayerInfo, PlayerSettings, Side
+from arena.engine import EngineUnavailableError
+from arena.models import HintRecord, LLMResponse, PlayerInfo, PlayerSettings, Side
 
 CREATED_AT = datetime(2026, 6, 9, 12, 0, 0)
 
@@ -368,3 +371,179 @@ def test_normalize_termination_collapses_repetition():
     assert _normalize_termination("checkmate") == "checkmate"
     assert _normalize_termination("fifty_moves") == "fifty_moves"
     assert _normalize_termination("stalemate") == "stalemate"
+
+
+# --- протокол подсказок движка (★, D-010) ------------------------------------
+
+class _ResponsePlayer:
+    """Игрок, отдающий заранее заданные ``LLMResponse`` по очереди.
+
+    В отличие от ``_ScriptedPlayer`` (только ходы), здесь скрипт — полные ответы
+    протокола D-007, поэтому можно выразить ``request_hint``/``resign`` и
+    несколько запросов на одном ходу (перезапрос после выдачи подсказки).
+    """
+
+    def __init__(self, model_id: str, responses):
+        self._info = PlayerInfo(
+            model_id=model_id, provider="fake", display_name=model_id.upper()
+        )
+        self._responses = list(responses)
+        self._idx = 0
+        self.seen: list[list] = []
+
+    @property
+    def info(self) -> PlayerInfo:
+        return self._info
+
+    def respond(self, messages):
+        self.seen.append(list(messages))
+        resp = self._responses[self._idx]
+        self._idx += 1
+        return resp
+
+
+class _FakeEngine:
+    """Фейковый движок подсказок: отдаёт фиксированный ``HintRecord`` (★, D-010).
+
+    Считает вызовы ``best_move``; при ``error=True`` имитирует отказ движка
+    (``EngineUnavailableError``) для проверки деградации.
+    """
+
+    def __init__(self, hint: HintRecord | None = None, *, error: bool = False):
+        self.hint = hint or HintRecord(best_move="d2d4", eval_cp=35)
+        self.error = error
+        self.calls: list[str] = []
+
+    def best_move(self, fen: str) -> HintRecord:
+        self.calls.append(fen)
+        if self.error:
+            raise EngineUnavailableError("движок недоступен")
+        return self.hint
+
+
+def _hint_runner(
+    white_responses, *, engine=None, max_plies=1, settings=None, on_event=None
+):
+    players = {
+        "white": _ResponsePlayer("white-model", white_responses),
+        "black": _ResponsePlayer("black-model", []),
+    }
+    game = new_game_record(
+        players, game_id="h1", created_at=CREATED_AT, settings=settings
+    )
+    runner = GameRunner(
+        players,
+        game,
+        board=Board(),
+        max_plies=max_plies,
+        engine=engine,
+        on_event=on_event,
+    )
+    return runner, players, game
+
+
+def test_request_hint_consumes_one_and_records_hint():
+    engine = _FakeEngine(HintRecord(best_move="e2e4", eval_cp=30))
+    runner, _, game = _hint_runner(
+        [LLMResponse(request_hint=True), LLMResponse(move="e4")], engine=engine
+    )
+    runner.play()
+
+    assert engine.calls == [Board().fen()]  # движок спрошен по стартовой позиции
+    assert game.hints_used["white"] == 1
+    move = game.moves[0]
+    assert move.san == "e4"
+    assert move.hint_used is True
+    assert move.hint == HintRecord(best_move="e2e4", eval_cp=30)
+
+
+def test_hint_injected_into_requery_context():
+    engine = _FakeEngine(HintRecord(best_move="d2d4", eval_cp=35))
+    runner, players, _ = _hint_runner(
+        [LLMResponse(request_hint=True), LLMResponse(move="d4")], engine=engine
+    )
+    runner.play()
+
+    # белых спросили дважды: запрос подсказки, затем перезапрос с подсказкой.
+    assert len(players["white"].seen) == 2
+    requery_context = players["white"].seen[1][-1].content
+    assert "Engine hint" in requery_context
+    assert "d2d4" in requery_context
+    # остаток подсказок в перезапросе уже уменьшён (1 из 3 израсходована).
+    assert "Hints remaining: 2" in requery_context
+
+
+def test_hint_emits_event():
+    engine = _FakeEngine(HintRecord(best_move="e2e4", eval_cp=30))
+    events: list[GameEvent] = []
+    runner, _, _ = _hint_runner(
+        [LLMResponse(request_hint=True), LLMResponse(move="e4")],
+        engine=engine,
+        on_event=events.append,
+    )
+    runner.play()
+
+    hint_events = [e for e in events if e.type == EVENT_HINT]
+    assert len(hint_events) == 1
+    payload = hint_events[0].payload
+    assert payload["side"] == "white"
+    assert payload["best_move"] == "e2e4"
+    assert payload["eval_cp"] == 30
+    assert payload["hints_remaining"] == 2
+
+
+def test_hint_ignored_without_engine():
+    # Запрос подсказки без движка: подсказка не тратится, ход обрабатывается обычно.
+    runner, players, game = _hint_runner(
+        [LLMResponse(request_hint=True, move="e4")], engine=None
+    )
+    runner.play()
+
+    assert game.hints_used["white"] == 0
+    assert len(players["white"].seen) == 1  # перезапроса не было
+    move = game.moves[0]
+    assert move.san == "e4"
+    assert move.hint_used is False
+    assert move.hint is None
+
+
+def test_hint_ignored_when_limit_exhausted():
+    engine = _FakeEngine()
+    runner, _, game = _hint_runner(
+        [LLMResponse(request_hint=True, move="e4")],
+        engine=engine,
+        settings=PlayerSettings(hints_per_player=0),
+    )
+    runner.play()
+
+    assert engine.calls == []  # движок даже не спрошен — лимит 0
+    assert game.hints_used["white"] == 0
+    assert game.moves[0].hint_used is False
+
+
+def test_only_one_hint_per_turn():
+    # Подсказка выдана; повторный request_hint в том же ходу игнорируется.
+    engine = _FakeEngine()
+    runner, players, game = _hint_runner(
+        [LLMResponse(request_hint=True), LLMResponse(request_hint=True, move="e4")],
+        engine=engine,
+    )
+    runner.play()
+
+    assert len(engine.calls) == 1  # движок спрошен ровно один раз
+    assert game.hints_used["white"] == 1
+    assert game.moves[0].san == "e4"
+
+
+def test_engine_failure_during_hint_degrades():
+    # Движок отказывает на запросе подсказки: подсказка не тратится, ход играется.
+    engine = _FakeEngine(error=True)
+    runner, _, game = _hint_runner(
+        [LLMResponse(request_hint=True, move="e4")], engine=engine
+    )
+    runner.play()
+
+    assert engine.calls  # попытка была
+    assert game.hints_used["white"] == 0
+    assert game.moves[0].hint_used is False
+    assert game.moves[0].san == "e4"
