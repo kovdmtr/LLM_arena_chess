@@ -47,7 +47,7 @@
 ## Phase 4 — Артефакты
 - [x] `feat(storage): export game.pgn` — из `GameRecord` через `core.pgn`.
 - [x] `test(storage): pgn opens as valid game` — повторный парсинг PGN.
-- [ ] `feat(report): board image rendering` — SVG (+ опц. PNG через cairosvg).
+- [x] `feat(report): board image rendering` — SVG (+ опц. PNG через cairosvg).
 - [ ] `feat(report): html report template` — Jinja2: шапка, ходы, доски, рассуждения, итог.
 - [ ] `feat(report): render report from game.json` — генерация self-contained `report.html`.
 - [ ] `test(report): report renders from fixture` — smoke-тест рендера.
