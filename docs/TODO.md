@@ -63,7 +63,7 @@
 - [x] `feat(report): show eval and classification badges` ★ — бейджи и сводка в отчёте.
 
 ## Phase 6 — ★ Веб-интерфейс
-- [ ] `feat(web): fastapi app skeleton` ★ — приложение, static/templates, health.
+- [x] `feat(web): fastapi app skeleton` ★ — приложение, static/templates, health.
 - [ ] `feat(web): model selection page` ★ — каталог моделей, форма выбора белых/чёрных.
 - [ ] `feat(web): start game endpoint` ★ — `POST /games`, запуск `GameRunner`.
 - [ ] `feat(web): websocket live view` ★ — трансляция событий хода/доски/рассуждения.
