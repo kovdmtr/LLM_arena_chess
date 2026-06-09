@@ -13,7 +13,7 @@
 ## Phase 0 — Каркас и конфиг
 - [x] `chore: init project` — `pyproject.toml`, зависимости, `README.md`, структура `src/arena/`, `tests/`.
 - [x] `chore: add gitignore and env example` — `.gitignore` (`.env`, `games/`, кэши), `.env.example`.
-- [ ] `feat(config): load settings from .env and config.yaml` — `Settings` (pydantic-settings) + `config.yaml` по умолчанию.
+- [x] `feat(config): load settings from .env and config.yaml` — `Settings` (pydantic-settings) + `config.yaml` по умолчанию.
 - [ ] `feat(config): model catalog` — парсинг `models:`, резолв `api_key_env`, fail-fast при отсутствии ключа.
 - [ ] `test(config): settings and catalog` — юнит-тесты загрузки/валидации.
 

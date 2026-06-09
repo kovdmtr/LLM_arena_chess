@@ -1,0 +1,36 @@
+# LLM Chess Arena — несекретная конфигурация.
+# Секреты (API-ключи) — только в .env (см. .env.example). Здесь хранятся имена
+# переменных окружения (api_key_env), а не их значения.
+
+arena:
+  illegal_move_retries: 3        # попыток до технического поражения
+  hints_per_player: 3
+  auto_claim_draws: true         # авто-ничья при 50-ходовом/троекратном повторении
+
+engine:
+  enabled: true
+  path: "stockfish"              # путь к бинарнику или имя в PATH
+  analysis_depth: 18
+  hint_depth: 18
+
+providers:
+  openai:    { api_key_env: OPENAI_API_KEY }
+  anthropic: { api_key_env: ANTHROPIC_API_KEY }
+  google:    { api_key_env: GOOGLE_API_KEY }
+
+models:                          # каталог выбираемых моделей
+  - id: gpt-4o
+    provider: openai
+    display_name: "GPT-4o"
+    params: { temperature: 0.2, max_tokens: 1024 }
+  - id: claude-opus-4-8
+    provider: anthropic
+    display_name: "Claude Opus 4.8"
+    params: { temperature: 0.2, max_tokens: 1024 }
+  - id: gemini-2.5-pro
+    provider: google
+    display_name: "Gemini 2.5 Pro"
+    params: { temperature: 0.2, max_tokens: 1024 }
+
+output:
+  games_dir: "games"

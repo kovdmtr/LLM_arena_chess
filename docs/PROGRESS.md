@@ -8,13 +8,15 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 0 — Каркас и конфиг (начата по коду).
-- **Последняя завершённая задача:** `chore: add gitignore and env example` —
-  `.gitignore` уже был полным; добавлен `.env.example` с тремя именами ключей
-  провайдеров (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`) без значений.
-- **Следующая задача:** `feat(config): load settings from .env and config.yaml`
-  из `docs/TODO.md` (Phase 0) — `Settings` (pydantic-settings) + `config.yaml`
-  по умолчанию.
+- **Фаза:** Phase 0 — Каркас и конфиг (в работе).
+- **Последняя завершённая задача:** `feat(config): load settings from .env and config.yaml` —
+  дефолтный `config.yaml` (по `PROJECT_SPEC §5.1`) + `arena.config.settings`:
+  типизированный `AppConfig` (`arena/engine/providers/models/output`) с `from_yaml()`,
+  секреты через `pydantic-settings` (`Secrets`, чтение `.env`, резолв по имени переменной),
+  фасад `Settings.load()`. Пустой ключ трактуется как отсутствие.
+- **Следующая задача:** `feat(config): model catalog` из `docs/TODO.md` (Phase 0) —
+  каталог по `config.models`, резолв ключа через `providers[*].api_key_env` + `Secrets`,
+  lookup модели по `id`, fail-fast при отсутствии ключа для выбранной модели.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -39,3 +41,4 @@
 | 2026-06-09 | `chore: init project`: pyproject + скелет `src/arena/` (12 слоёв) + smoke-тест | `7bf8606` | `chore: add gitignore and env example` |
 | 2026-06-09 | Добавлен «Критерий готовности задачи» (тесты + зелёный `pytest` обязательны перед коммитом) в `CLAUDE.md`/`TODO.md` | `4f69fd2`, `2ec354e` | `chore: add gitignore and env example` |
 | 2026-06-09 | `chore: add gitignore and env example`: добавлен `.env.example` (3 ключа провайдеров); pytest зелёный (2 passed) | `12cd6f1` | `feat(config): load settings from .env and config.yaml` |
+| 2026-06-09 | `feat(config): load settings`: дефолтный `config.yaml` + `config/settings.py` (`AppConfig.from_yaml`, `Secrets`, `Settings.load`); тесты `test_config.py`; pytest зелёный (9 passed) | _pending_ | `feat(config): model catalog` |
