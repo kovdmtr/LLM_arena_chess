@@ -8,28 +8,26 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 2 — Провайдеры LLM. Базовый интерфейс, фабрика, OpenAI,
-  Anthropic и Gemini готовы — все три провайдера реализованы. Дальше:
-  `test(providers): mocked transport` и `feat(arena): model player`.
-- **Последняя завершённая задача:** `feat(providers): gemini` —
-  `providers/gemini_provider.py`: `GeminiProvider(LLMProvider)` поверх SDK
-  `google-genai` (`client.models.generate_content`). `complete` выносит
-  system-реплики в `system_instruction` параметра `GenerateContentConfig` (через
-  `\n\n`, как у Anthropic), маппит роль `assistant`→`model` в `contents`
-  (`{"role", "parts": [{"text"}]}`), `temperature`/`max_tokens`(→`max_output_tokens`)
-  тоже в конфиг; имя модели — `ResolvedModel.id`. Ответ — `response.text`;
-  пустой/`None` → `ProviderError`. Клиент `genai.Client(api_key=...)` создаётся
-  **лениво и кэшируется**, ошибки SDK оборачиваются в `ProviderError` с маскированием
-  ключа через `mask_secret`. Регистрация `@register_provider("gemini")` + импорт в
-  `providers/__init__`. Без отдельного prompt caching (D-018: explicit-cache API —
-  вне рамок задачи). Тесты `test_providers_gemini.py` (12 шт, мок `genai.Client`:
-  system_instruction/слияние, маппинг ролей, отсутствие system_instruction,
-  трансляция параметров, ленивое кэширование, обёртка ошибок + маскирование,
-  пустой/`None`/битый ответ, `repr` без ключа). D-018 в DECISIONS.
-- **Следующая задача:** `test(providers): mocked transport` из `docs/TODO.md`
-  (Phase 2) — общий набор тестов парсинга ответов/обработки ошибок на моках.
-  Примечание: каждый провайдер уже покрыт своими мок-тестами; оценить, нужен ли
-  отдельный кросс-провайдерный блок или пункт закрывается уже написанным.
+- **Фаза:** Phase 2 — Провайдеры LLM. **Phase 2 закрыта**: базовый интерфейс,
+  фабрика, OpenAI, Anthropic, Gemini реализованы и покрыты тестами (свои +
+  кросс-провайдерный контракт). Дальше: `feat(arena): model player` — переход к
+  Phase 3 (игровой цикл).
+- **Последняя завершённая задача:** `test(providers): mocked transport` —
+  `tests/test_providers_transport.py` (19 шт): единый *кросс-провайдерный* набор,
+  параметризованный по всем трём реализациям (`CASES` для openai/anthropic/gemini),
+  фиксирующий общий контракт `LLMProvider` за фабрикой. Решение по объёму: каждый
+  провайдер уже покрыт своим мок-блоком со спецификой SDK, поэтому новый файл НЕ
+  дублирует специфику, а проверяет единообразие семейства: реестр = ровно три
+  провайдера; `create_provider` → правильный тип; `complete` → сырой текст; сбой SDK
+  → `ProviderError` с маскированием ключа; пустой ответ (`content=None` / нет
+  text-блоков / `text=""`) → `ProviderError`; клиент создаётся лениво и кэшируется;
+  `repr` без ключа. Общий фейк-клиент строится фабрикой `_make_fake_client` по пути
+  атрибутов SDK (`chat.completions.create` / `messages.create` /
+  `models.generate_content`); провайдер описывается классом `_Case`. Цель блока —
+  поймать расхождение будущей реализации с контрактом.
+- **Следующая задача:** `feat(arena): model player` из `docs/TODO.md` (Phase 2/3) —
+  `ModelPlayer` поверх провайдера: вызывает `complete`, разбирает сырой текст в
+  `LLMResponse` (D-007). Начало Phase 3.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -38,7 +36,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 155 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 174 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -71,3 +69,4 @@
 | 2026-06-09 | `feat(providers): openai`: `providers/openai_provider.py` (`OpenAIProvider` поверх SDK `openai`, Chat Completions); ленивое кэширование клиента, обёртка ошибок SDK в `ProviderError`, утилита `mask_secret` в `base.py` (маскирование ключа); регистрация через `@register_provider("openai")` + импорт в `__init__`; тесты `test_providers_openai.py` (8 шт на моках); pytest зелёный (131 passed) | `fd70e0e` | `feat(providers): anthropic` |
 | 2026-06-09 | `feat(providers): anthropic`: `providers/anthropic_provider.py` (`AnthropicProvider` поверх SDK `anthropic`, Messages API); system вынесен из `messages` в параметр `system` с `cache_control: ephemeral` (prompt caching, D-017), конкатенация text-блоков ответа, ленивое кэширование клиента, обёртка ошибок + `mask_secret`; регистрация `@register_provider("anthropic")` + импорт в `__init__`; тесты `test_providers_anthropic.py` (12 шт на моках); D-017 в DECISIONS; pytest зелёный (143 passed) | `f7d3ab1` | `feat(providers): gemini` |
 | 2026-06-09 | `feat(providers): gemini`: `providers/gemini_provider.py` (`GeminiProvider` поверх SDK `google-genai`, `generate_content`); system → `system_instruction`, маппинг роли `assistant`→`model`, параметры в `GenerateContentConfig`, ответ `response.text`, ленивое кэширование клиента, обёртка ошибок + `mask_secret`; регистрация `@register_provider("gemini")` + импорт в `__init__`; тесты `test_providers_gemini.py` (12 шт на моках); D-018 в DECISIONS; **все 3 провайдера готовы**; pytest зелёный (155 passed) | `2ab06cc` | `test(providers): mocked transport` |
+| 2026-06-09 | `test(providers): mocked transport`: `tests/test_providers_transport.py` (19 шт) — единый кросс-провайдерный контракт за фабрикой (реестр=3, тип провайдера, сырой текст, обёртка+маскирование ошибки, пустой ответ, ленивое кэширование, `repr` без ключа), параметризован по openai/anthropic/gemini через `_Case`/`_make_fake_client`; **Phase 2 закрыта**; pytest зелёный (174 passed) | _(pending)_ | `feat(arena): model player` |

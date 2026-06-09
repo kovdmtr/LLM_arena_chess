@@ -31,7 +31,7 @@
 - [x] `feat(providers): openai` — реализация + маскирование ключа.
 - [x] `feat(providers): anthropic` — реализация (+ prompt caching статичной части).
 - [x] `feat(providers): gemini` — реализация.
-- [ ] `test(providers): mocked transport` — парсинг ответов, обработка ошибок на моках.
+- [x] `test(providers): mocked transport` — парсинг ответов, обработка ошибок на моках.
 - [ ] `feat(arena): model player` — `ModelPlayer` поверх провайдера, возвращает `LLMResponse`.
 
 ## Phase 3 — Игровой цикл
