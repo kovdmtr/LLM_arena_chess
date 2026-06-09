@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from arena.config import AppConfig, ModelCatalog, Secrets, Settings
 from arena.models import LLMResponse, PlayerInfo
+from arena.providers import ProviderError
 from arena.web import GameManager, create_app
 from arena.web.games import STATUS_ERROR, STATUS_FINISHED
 
@@ -196,3 +197,20 @@ def test_post_games_missing_key_rerenders_form_with_error(tmp_path):
     assert resp.status_code == 400
     assert "API-ключа" in resp.text
     assert manager.sessions == []
+
+
+def test_post_games_provider_error_rerenders_form(tmp_path):
+    # Построение провайдера падает (как при неизвестном/несовместимом провайдере) —
+    # форма перерисовывается с ошибкой, а не отдаёт голый 500.
+    def boom_factory(side, resolved):
+        raise ProviderError("неизвестный провайдер 'google'")
+
+    client, manager = _client(tmp_path, factory=boom_factory)
+    with client:
+        resp = client.post(
+            "/games",
+            data={"white": "w-model", "black": "b-model"},
+            follow_redirects=False,
+        )
+    assert resp.status_code == 400
+    assert "неизвестный провайдер" in resp.text

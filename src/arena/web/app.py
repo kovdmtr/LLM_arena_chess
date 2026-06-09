@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from arena.config import ConfigError, ModelCatalog, Settings
+from arena.providers import ProviderError
 from arena.report import render_report_html
 from arena.web.games import GameManager
 from arena.web.live import stream_session
@@ -99,12 +100,14 @@ def create_app(
                 "white": catalog.resolve(white),
                 "black": catalog.resolve(black),
             }
-        except ConfigError as exc:
+            session = _get_manager(request.app).start(resolved)
+        except (ConfigError, ProviderError) as exc:
+            # Неизвестная модель/провайдер или отсутствие ключа (резолв), либо сбой
+            # построения провайдера (старт) — показываем форму с понятной ошибкой.
             return _render_new_game(
                 request, catalog, error=str(exc),
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        session = _get_manager(request.app).start(resolved)
         return RedirectResponse(
             f"/games/{session.id}", status_code=status.HTTP_303_SEE_OTHER
         )
