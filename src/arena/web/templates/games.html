@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="games">
+  <div class="games-head">
+    <h2>Партии</h2>
+    <a class="button" href="/games/new">Новая партия</a>
+  </div>
+
+  {% if games %}
+  <ul class="games-list">
+    {% for game in games %}
+    <li class="game-row">
+      <a href="/games/{{ game.id }}">
+        <span class="players">{{ game.white }} <span class="vs">vs</span> {{ game.black }}</span>
+        <span class="badge status-{{ game.status }}">{% if game.live %}идёт{% else %}{{ game.status }}{% endif %}</span>
+        <span class="result">{{ game.result }}</span>
+        <span class="gid">{{ game.id }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">Пока нет партий. <a href="/games/new">Начать первую</a>.</p>
+  {% endif %}
+</section>
+{% endblock %}

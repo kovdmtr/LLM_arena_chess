@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="game-live" data-game-id="{{ game_id }}">
+  <h2>{{ white }} <span class="vs">vs</span> {{ black }}</h2>
+  <p id="live-status" class="live-status">Подключение…</p>
+  <div class="live-layout">
+    <div id="live-board" class="live-board">Ожидание позиции…</div>
+    <ol id="live-moves" class="live-moves"></ol>
+  </div>
+  <p class="hint">Просмотр идёт в реальном времени по WebSocket. По завершении
+    партии откройте страницу снова, чтобы увидеть отчёт с интерактивным плеером.</p>
+</section>
+
+<script>
+(function () {
+  const root = document.querySelector(".game-live");
+  const gameId = root.dataset.gameId;
+  const statusEl = document.getElementById("live-status");
+  const boardEl = document.getElementById("live-board");
+  const movesEl = document.getElementById("live-moves");
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const ws = new WebSocket(`${proto}://${location.host}/games/${gameId}/ws`);
+
+  ws.onmessage = function (event) {
+    const msg = JSON.parse(event.data);
+    const p = msg.payload || {};
+    if (p.svg) boardEl.innerHTML = p.svg;
+    if (msg.type === "game_start") {
+      statusEl.textContent = "Партия идёт…";
+    } else if (msg.type === "move") {
+      const li = document.createElement("li");
+      const num = (p.ply % 2 === 1) ? (Math.floor(p.ply / 2) + 1) + "." : (p.ply / 2) + "...";
+      li.textContent = `${num} ${p.san}` + (p.reasoning ? ` — ${p.reasoning}` : "");
+      movesEl.appendChild(li);
+    } else if (msg.type === "status") {
+      statusEl.textContent = `Завершено: ${p.result} (${p.termination || p.status})`;
+    } else if (msg.type === "error") {
+      statusEl.textContent = "Ошибка: " + (p.message || "неизвестная");
+    }
+  };
+  ws.onclose = function () {
+    if (statusEl.textContent === "Подключение…") statusEl.textContent = "Соединение закрыто.";
+  };
+})();
+</script>
+{% endblock %}

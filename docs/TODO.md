@@ -67,7 +67,7 @@
 - [x] `feat(web): model selection page` ★ — каталог моделей, форма выбора белых/чёрных.
 - [x] `feat(web): start game endpoint` ★ — `POST /games`, запуск `GameRunner`.
 - [x] `feat(web): websocket live view` ★ — трансляция событий хода/доски/рассуждения.
-- [ ] `feat(web): games list and report view` ★ — `GET /games`, `GET /games/{id}`.
+- [x] `feat(web): games list and report view` ★ — `GET /games`, `GET /games/{id}`.
 
 ## Доп. изменения (вне исходных фаз)
 - [x] `feat(prompts): optional legal-moves list` ★ (D-021) — флаг `include_legal_moves` (дефолт `false`): ИИ не получает список легальных ходов, легальность проверяется после хода (ретрай D-006). Сквозной `config.yaml`→`ArenaConfig`/`PlayerSettings`→`system`/`context`.

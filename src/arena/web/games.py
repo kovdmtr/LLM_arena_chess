@@ -23,12 +23,22 @@ import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 
 from arena.arena import GameEvent, GameRunner, ModelPlayer, new_game_record
 from arena.config import ResolvedModel
 from arena.models import GameRecord, PlayerInfo, Side
 from arena.providers import create_provider
-from arena.storage import DEFAULT_GAMES_ROOT, export_pgn, export_report, save_game
+from arena.storage import (
+    DEFAULT_GAMES_ROOT,
+    GAME_JSON_NAME,
+    StorageError,
+    export_pgn,
+    export_report,
+    game_dir,
+    load_game,
+    save_game,
+)
 
 # Статусы фоновой партии.
 STATUS_RUNNING = "running"
@@ -88,6 +98,19 @@ class GameSession:
     @property
     def termination(self) -> str | None:
         return self.record.termination
+
+
+@dataclass(frozen=True)
+class GameInfo:
+    """Краткая карточка партии для списка ``GET /games`` (память или диск)."""
+
+    id: str
+    white: str
+    black: str
+    status: str
+    result: str
+    live: bool
+    created_at: datetime
 
 
 class GameManager:
@@ -153,6 +176,62 @@ class GameManager:
         )
         thread.start()
         return session
+
+    def list_games(self) -> list[GameInfo]:
+        """Карточки всех партий: идущие/завершённые из памяти + сохранённые на диске.
+
+        Память имеет приоритет над диском (живой статус); записи дедуплицируются по
+        ``id``. Сортировка: идущие партии первыми, затем по времени создания (новые
+        раньше).
+        """
+        infos: dict[str, GameInfo] = {}
+        for session in self.sessions:
+            infos[session.id] = GameInfo(
+                id=session.id,
+                white=session.players["white"].display_name,
+                black=session.players["black"].display_name,
+                status=session.status,
+                result=session.result,
+                live=not session.done,
+                created_at=session.record.created_at,
+            )
+        root = Path(self._games_root)
+        if root.is_dir():
+            for child in sorted(root.iterdir()):
+                if child.name in infos or not (child / GAME_JSON_NAME).is_file():
+                    continue
+                try:
+                    record = load_game(child)
+                except StorageError:
+                    continue
+                infos[record.id] = GameInfo(
+                    id=record.id,
+                    white=record.players["white"].display_name,
+                    black=record.players["black"].display_name,
+                    status=STATUS_FINISHED,
+                    result=record.result,
+                    live=False,
+                    created_at=record.created_at,
+                )
+        return sorted(
+            infos.values(), key=lambda g: (not g.live, -g.created_at.timestamp())
+        )
+
+    def load_record(self, game_id: str) -> GameRecord | None:
+        """Вернуть ``GameRecord`` партии: из памяти (живой) или с диска; ``None`` если нет."""
+        session = self.get(game_id)
+        if session is not None:
+            return session.record
+        try:
+            path = game_dir(game_id, games_root=self._games_root)
+        except StorageError:
+            return None  # некорректный id (анти-traversal)
+        if not (path / GAME_JSON_NAME).is_file():
+            return None
+        try:
+            return load_game(path)
+        except StorageError:
+            return None
 
     def _run(
         self, session: GameSession, players: dict[Side, object], record: GameRecord

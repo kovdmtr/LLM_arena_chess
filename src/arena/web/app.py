@@ -16,12 +16,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request, WebSocket, status
+from fastapi import FastAPI, Form, HTTPException, Request, WebSocket, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from arena.config import ConfigError, ModelCatalog, Settings
+from arena.report import render_report_html
 from arena.web.games import GameManager
 from arena.web.live import stream_session
 
@@ -113,6 +114,43 @@ def create_app(
         """Live-просмотр партии: replay накопленных событий + стрим новых."""
         session = _get_manager(websocket.app).get(game_id)
         await stream_session(websocket, session)
+
+    @app.get("/games", response_class=HTMLResponse)
+    def games_list(request: Request) -> HTMLResponse:
+        """Список партий: идущие (из памяти) и завершённые (из памяти/с диска)."""
+        games = _get_manager(request.app).list_games()
+        return templates.TemplateResponse(
+            request,
+            "games.html",
+            {"title": f"{APP_TITLE} — партии", "games": games},
+        )
+
+    @app.get("/games/{game_id}", response_class=HTMLResponse)
+    def game_detail(request: Request, game_id: str) -> HTMLResponse:
+        """Страница партии: живой просмотр для идущей, готовый отчёт для завершённой.
+
+        Идущая партия (сессия в памяти не завершена) → страница live-просмотра,
+        подключающаяся к ``WS /games/{id}/ws``. Завершённая (в памяти или на диске)
+        → self-contained HTML-отчёт с интерактивным плеером (переиспользуется из
+        слоя ``report``). Неизвестная партия → 404.
+        """
+        manager = _get_manager(request.app)
+        session = manager.get(game_id)
+        if session is not None and not session.done:
+            return templates.TemplateResponse(
+                request,
+                "game_live.html",
+                {
+                    "title": f"{APP_TITLE} — партия {game_id}",
+                    "game_id": game_id,
+                    "white": session.players["white"].display_name,
+                    "black": session.players["black"].display_name,
+                },
+            )
+        record = manager.load_record(game_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="партия не найдена")
+        return HTMLResponse(render_report_html(record))
 
     return app
 
