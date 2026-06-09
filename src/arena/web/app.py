@@ -16,13 +16,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request, status
+from fastapi import FastAPI, Form, Request, WebSocket, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from arena.config import ConfigError, ModelCatalog, Settings
 from arena.web.games import GameManager
+from arena.web.live import stream_session
 
 # Каталог пакета веб-слоя; статика и шаблоны лежат рядом с этим модулем.
 _WEB_DIR = Path(__file__).resolve().parent
@@ -106,6 +107,12 @@ def create_app(
         return RedirectResponse(
             f"/games/{session.id}", status_code=status.HTTP_303_SEE_OTHER
         )
+
+    @app.websocket("/games/{game_id}/ws")
+    async def game_ws(websocket: WebSocket, game_id: str) -> None:
+        """Live-просмотр партии: replay накопленных событий + стрим новых."""
+        session = _get_manager(websocket.app).get(game_id)
+        await stream_session(websocket, session)
 
     return app
 

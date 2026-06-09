@@ -16,21 +16,18 @@
   (`best_move`/`evaluate`, деградация без бинарника) и ★ слой `analysis/`
   (centipawn-loss классификация + `AnalysisSummary` + LLM-комментарий ключевых
   моментов, D-009). Дальше — Phase 6 (★ веб-интерфейс).
-- **Последняя завершённая задача:** `feat(web): start game endpoint` ★ — `POST /games`:
-  резолвит выбранные модели через каталог (fail-fast при неизвестной модели/отсутствии
-  ключа → форма перерисовывается с ошибкой, 400), запускает партию в фоне и редиректит
-  (303) на `/games/{id}`. Инфраструктура: `web/games.py` — `GameManager` (реестр + запуск
-  партий в потоках-демонах, по окончании `save_game`/`export_pgn`/`export_report`) и
-  `GameSession` (статус running/finished/error, накопленные события для live-просмотра,
-  ссылка на живой `GameRecord`). Игроки строятся через `player_factory` (шов для тестов:
-  фейковые игроки без сети). **Движок в веб-партиях пока не подключён — базовый уровень
-  без Stockfish (D-008); подключение — Phase 7.** Добавлена зависимость `python-multipart`
-  (Form). Экспорт `GameManager`/`GameSession` из `arena.web`. Тесты `test_web_start_game.py`
-  (8, Fool's mate на скриптованных игроках). До неё — `feat(web): model selection page` ★.
-- **Следующая задача:** `feat(web): websocket live view` ★ — `WS /games/{id}/ws`: replay
-  накопленных событий сессии + стрим новых (ход/доска/рассуждение). Дальше по Phase 6:
-  `games list and report view` (`GET /games`, `GET /games/{id}` — переиспользует плеер
-  из отчёта, см. ROADMAP).
+- **Последняя завершённая задача:** `feat(web): websocket live view` ★ — `WS /games/{id}/ws`
+  (`web/live.py`): сначала **replay** накопленных событий сессии (подключившийся позже
+  видит партию с начала), затем **стрим** новых опросом буфера до завершения, в конце —
+  кадр `status` (статус/результат/причина/ошибка) и закрытие. События обогащаются для
+  фронтенда (`enrich_event`): к кадрам с `fen` добавляется inline-SVG доски (подсветка
+  хода по `uci`), к ходам — `reasoning` из `GameRecord` (рендер на сервере, D-013).
+  Неизвестная партия → кадр `error`. Тесты `test_web_live_view.py` (4). До неё —
+  `feat(web): start game endpoint` ★.
+- **Следующая задача (последняя в Phase 6):** `feat(web): games list and report view` ★ —
+  `GET /games` (список партий: running из памяти + завершённые с диска) и `GET /games/{id}`
+  (страница партии: live-просмотр для идущей через WS-плеер, готовый отчёт для завершённой —
+  переиспользует интерактивный плеер из отчёта, см. ROADMAP).
 - **Примечание (среда):** установленный Starlette использует НОВУЮ сигнатуру
   `Jinja2Templates.TemplateResponse(request, name, context)` (старый порядок
   `(name, {"request": ...})` падает `TypeError: unhashable type: 'dict'`). `TestClient`
@@ -44,7 +41,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 404 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template (вкл. сводку ★-анализа + интерактивный плеер) + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + analysis commentary ★ + web app skeleton ★ + web model selection ★ + web start game ★ + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 404 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template (вкл. сводку ★-анализа + интерактивный плеер) + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + analysis commentary ★ + web app skeleton ★ + web model selection ★ + web start game ★ + web live view ★ + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
 - Запуск веб-UI: `\.venv\Scripts\python.exe -m uvicorn arena.web.app:app` (каркас: `/`, `/health`, `/static`).
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -109,3 +106,4 @@
 | 2026-06-09 | `feat(web): fastapi app skeleton` ★: **Phase 6 началась** — `web/app.py` (`create_app(settings=None)` + модульный `app`): health `/health`, статика `/static` (`app.css`), Jinja2-шаблоны (`base.html`+`index.html`, стартовая `/`); `settings`/`templates` в `app.state`; экспорт из `arena.web`; найдено: Starlette требует новую сигнатуру `TemplateResponse(request, name, context)`; тесты `test_web_app.py` (5, `TestClient`); pytest зелёный (404 passed, 1 skipped) | `f34ff99` | `feat(web): model selection page` ★ |
 | 2026-06-09 | `feat(web): model selection page` ★: `GET /games/new` рендерит каталог моделей формой выбора белых/чёрных (2×`<select>` → `POST /games`); модели без ключа `disabled`+«ключ не задан», пустой каталог → плейсхолдер; каталог лениво через `_get_catalog` (кэш в `app.state.catalog`); ключ в HTML не утекает (D-003, под тестом); `new_game.html`+стили, индекс ведёт на `/games/new`; тесты `test_web_model_selection.py` (6); pytest зелёный (410 passed, 1 skipped) | `f2b6664` | `feat(web): start game endpoint` ★ |
 | 2026-06-09 | `feat(web): start game endpoint` ★: `POST /games` резолвит модели (fail-fast → форма с ошибкой 400) и стартует партию в фоне, редирект 303 на `/games/{id}`; `web/games.py` — `GameManager` (реестр + потоки-демоны + сохранение артефактов по окончании) и `GameSession` (статус/события/живой `GameRecord`); `player_factory` — шов для фейковых игроков; движок в веб пока не подключён (база, D-008; Phase 7); +зависимость `python-multipart`; тесты `test_web_start_game.py` (8, Fool's mate); pytest зелёный (428 passed, 1 skipped) | `da2bd18` | `feat(web): websocket live view` ★ |
+| 2026-06-09 | `feat(web): websocket live view` ★: `WS /games/{id}/ws` (`web/live.py`, `stream_session`/`enrich_event`) — replay накопленных событий + стрим новых до завершения, финальный кадр `status`; кадры с `fen` обогащаются inline-SVG доски (подсветка по `uci`), ходы — `reasoning` из записи; неизвестная партия → кадр `error`; **в коммите `da2bd18` устранена утечка: реальные API-ключи случайно попали в `.env.example` через `git add -A` — перенесены в `.env` (gitignore), история переписана (amend+gc), ключи нужно ротировать**; тесты `test_web_live_view.py` (4); pytest зелёный (432 passed, 1 skipped) | _pending_ | `feat(web): games list and report view` ★ |

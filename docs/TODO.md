@@ -66,7 +66,7 @@
 - [x] `feat(web): fastapi app skeleton` ★ — приложение, static/templates, health.
 - [x] `feat(web): model selection page` ★ — каталог моделей, форма выбора белых/чёрных.
 - [x] `feat(web): start game endpoint` ★ — `POST /games`, запуск `GameRunner`.
-- [ ] `feat(web): websocket live view` ★ — трансляция событий хода/доски/рассуждения.
+- [x] `feat(web): websocket live view` ★ — трансляция событий хода/доски/рассуждения.
 - [ ] `feat(web): games list and report view` ★ — `GET /games`, `GET /games/{id}`.
 
 ## Доп. изменения (вне исходных фаз)
