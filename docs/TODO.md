@@ -32,7 +32,7 @@
 - [x] `feat(providers): anthropic` — реализация (+ prompt caching статичной части).
 - [x] `feat(providers): gemini` — реализация.
 - [x] `test(providers): mocked transport` — парсинг ответов, обработка ошибок на моках.
-- [ ] `feat(arena): model player` — `ModelPlayer` поверх провайдера, возвращает `LLMResponse`.
+- [x] `feat(arena): model player` — `ModelPlayer` поверх провайдера, возвращает `LLMResponse`.
 
 ## Phase 3 — Игровой цикл
 - [ ] `feat(prompts): system prompt and response format` — правила + строгий JSON-формат ответа.

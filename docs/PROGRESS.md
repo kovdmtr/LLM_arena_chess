@@ -8,26 +8,30 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 2 — Провайдеры LLM. **Phase 2 закрыта**: базовый интерфейс,
-  фабрика, OpenAI, Anthropic, Gemini реализованы и покрыты тестами (свои +
-  кросс-провайдерный контракт). Дальше: `feat(arena): model player` — переход к
-  Phase 3 (игровой цикл).
-- **Последняя завершённая задача:** `test(providers): mocked transport` —
-  `tests/test_providers_transport.py` (19 шт): единый *кросс-провайдерный* набор,
-  параметризованный по всем трём реализациям (`CASES` для openai/anthropic/gemini),
-  фиксирующий общий контракт `LLMProvider` за фабрикой. Решение по объёму: каждый
-  провайдер уже покрыт своим мок-блоком со спецификой SDK, поэтому новый файл НЕ
-  дублирует специфику, а проверяет единообразие семейства: реестр = ровно три
-  провайдера; `create_provider` → правильный тип; `complete` → сырой текст; сбой SDK
-  → `ProviderError` с маскированием ключа; пустой ответ (`content=None` / нет
-  text-блоков / `text=""`) → `ProviderError`; клиент создаётся лениво и кэшируется;
-  `repr` без ключа. Общий фейк-клиент строится фабрикой `_make_fake_client` по пути
-  атрибутов SDK (`chat.completions.create` / `messages.create` /
-  `models.generate_content`); провайдер описывается классом `_Case`. Цель блока —
-  поймать расхождение будущей реализации с контрактом.
-- **Следующая задача:** `feat(arena): model player` из `docs/TODO.md` (Phase 2/3) —
-  `ModelPlayer` поверх провайдера: вызывает `complete`, разбирает сырой текст в
-  `LLMResponse` (D-007). Начало Phase 3.
+- **Фаза:** Phase 3 — Игровой цикл (началась). Phase 0–2 закрыты. Первый шаг
+  Phase 3 — `ModelPlayer` — готов; дальше: промпты (`feat(prompts): system prompt
+  and response format`).
+- **Последняя завершённая задача:** `feat(arena): model player` —
+  `src/arena/arena/player.py` (`ModelPlayer` + `parse_response`). `ModelPlayer`
+  соединяет слой провайдера и домен: `respond(messages)` → `provider.complete`
+  (сырой текст) → `parse_response` → `LLMResponse` (D-007). Параметры генерации
+  фиксируются на игрока (по умолчанию из `ResolvedModel`, можно переопределить);
+  `info` отдаёт `PlayerInfo` без ключа (D-003); `ProviderError` пробрасывается.
+  Парсер устойчив к тексту вокруг JSON: `_extract_json_objects` сканирует строку,
+  отслеживая глубину `{}` и строковые литералы с экранированием (скобки внутри
+  строк не ломают баланс), парсит каждый сбалансированный объект; `_select_payload`
+  берёт первый объект с ключом `move` (иначе первый валидный) — устойчиво к
+  markdown-ограждению и прозе/примерам вокруг. Поля приводятся терпимо: bool из
+  строки/числа (`"true"`/`1`), пустой/`null` `move` → `None`. Нет распознаваемого
+  JSON → `LLMResponse(reasoning=text, move=None)` (вышестоящий слой обработает как
+  нераспознанный ход, ретрай D-006), парсер не падает. Тесты
+  `tests/test_arena_player.py` (20 шт) на фейк-провайдере: оркестрация (параметры,
+  проброс ошибки, `info`/`repr` без секрета) + разбор (полный объект, UCI, дефолты,
+  fence/проза, скобки-в-строке, выбор объекта с `move`, терпимость к типам, сдача/
+  подсказка без хода, деградация без JSON).
+- **Следующая задача:** `feat(prompts): system prompt and response format` из
+  `docs/TODO.md` (Phase 3) — системный промпт (правила игры + строгий JSON-формат
+  ответа D-007), который будет читать `parse_response`.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -36,7 +40,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 174 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 194 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -70,3 +74,4 @@
 | 2026-06-09 | `feat(providers): anthropic`: `providers/anthropic_provider.py` (`AnthropicProvider` поверх SDK `anthropic`, Messages API); system вынесен из `messages` в параметр `system` с `cache_control: ephemeral` (prompt caching, D-017), конкатенация text-блоков ответа, ленивое кэширование клиента, обёртка ошибок + `mask_secret`; регистрация `@register_provider("anthropic")` + импорт в `__init__`; тесты `test_providers_anthropic.py` (12 шт на моках); D-017 в DECISIONS; pytest зелёный (143 passed) | `f7d3ab1` | `feat(providers): gemini` |
 | 2026-06-09 | `feat(providers): gemini`: `providers/gemini_provider.py` (`GeminiProvider` поверх SDK `google-genai`, `generate_content`); system → `system_instruction`, маппинг роли `assistant`→`model`, параметры в `GenerateContentConfig`, ответ `response.text`, ленивое кэширование клиента, обёртка ошибок + `mask_secret`; регистрация `@register_provider("gemini")` + импорт в `__init__`; тесты `test_providers_gemini.py` (12 шт на моках); D-018 в DECISIONS; **все 3 провайдера готовы**; pytest зелёный (155 passed) | `2ab06cc` | `test(providers): mocked transport` |
 | 2026-06-09 | `test(providers): mocked transport`: `tests/test_providers_transport.py` (19 шт) — единый кросс-провайдерный контракт за фабрикой (реестр=3, тип провайдера, сырой текст, обёртка+маскирование ошибки, пустой ответ, ленивое кэширование, `repr` без ключа), параметризован по openai/anthropic/gemini через `_Case`/`_make_fake_client`; **Phase 2 закрыта**; pytest зелёный (174 passed) | `375b851` | `feat(arena): model player` |
+| 2026-06-09 | `feat(arena): model player`: `src/arena/arena/player.py` (`ModelPlayer` + `parse_response`) — обёртка над провайдером: `respond` → `complete` → разбор сырого текста в `LLMResponse` (D-007); устойчивый JSON-парсер (баланс `{}` с учётом строк, выбор объекта с `move`, терпимость к типам, деградация без JSON → move=None); `info`/`repr` без ключа; **Phase 3 началась**; тесты `test_arena_player.py` (20 шт); pytest зелёный (194 passed) | _pending_ | `feat(prompts): system prompt and response format` |
