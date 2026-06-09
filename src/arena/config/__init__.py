@@ -2,6 +2,7 @@
 
 from arena.config.catalog import ConfigError, ModelCatalog, ResolvedModel
 from arena.config.settings import (
+    AnalysisConfig,
     AppConfig,
     ArenaConfig,
     EngineConfig,
@@ -15,6 +16,7 @@ from arena.config.settings import (
 )
 
 __all__ = [
+    "AnalysisConfig",
     "AppConfig",
     "ArenaConfig",
     "ConfigError",

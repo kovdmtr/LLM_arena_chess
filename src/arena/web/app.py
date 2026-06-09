@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from arena.config import ConfigError, ModelCatalog, Settings
+from arena.engine import build_engine
 from arena.obs import register_secrets
 from arena.providers import ProviderError
 from arena.report import render_report_html
@@ -233,7 +234,15 @@ def _get_manager(app: FastAPI) -> GameManager:
     manager = getattr(app.state, "game_manager", None)
     if manager is None:
         settings = _ensure_settings(app)
-        manager = GameManager(games_root=settings.config.output.games_dir)
+        engine_cfg = settings.config.engine
+        # ★ Движок подключается через единый путь (build_engine): на каждую партию —
+        # открытый Stockfish или None (деградация без бинарника/при enabled=false).
+        manager = GameManager(
+            games_root=settings.config.output.games_dir,
+            engine_factory=lambda: build_engine(engine_cfg, depth=engine_cfg.hint_depth),
+            analysis_config=settings.config.analysis,
+            analysis_depth=engine_cfg.analysis_depth,
+        )
         app.state.game_manager = manager
     return manager
 

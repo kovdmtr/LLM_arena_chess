@@ -75,7 +75,7 @@
 ## Phase 7 — Закалка
 - [x] `feat(providers): retry with backoff` — устойчивость к rate-limit/сетевым сбоям (D-022).
 - [x] `feat(obs): logging with key masking` — структурное логирование, маскирование секретов (D-023).
-- [ ] `chore: graceful degradation without engine` — единый путь отключения ★ при отсутствии Stockfish.
+- [x] `chore: graceful degradation without engine` — единый путь отключения ★ при отсутствии Stockfish; `engine.build_engine` + подключение движка/пост-анализа в веб-партии (D-024).
 - [ ] `test: full e2e run` — прогон база+★ на фейковых игроках.
 - [ ] `docs: finalize and add sample game` — пример `game.json`/`game.pgn`/`report.html`, актуализация доков.
 
