@@ -8,27 +8,27 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 3 — Игровой цикл (идёт). Phase 0–2 закрыты. Готовы `ModelPlayer`
-  и системный промпт; дальше — context builder (`feat(prompts): context builder`).
-- **Последняя завершённая задача:** `feat(prompts): system prompt and response
-  format` — `src/arena/prompts/system.py` (`build_system_prompt`, `system_message`,
-  `RESPONSE_KEYS`). Статичный системный промпт (D-017): описывает правила (классика,
-  без контроля времени, запрет пропуска хода D-015) и строгий JSON-протокол ответа
-  D-007 (`{ reasoning, move, request_hint, resign }`, ход SAN/UCI из списка
-  легальных, 3-strike → technical_loss, 3 подсказки/партию, сдача). Текст на
-  английском, зависит только от лимитов партии (`hints_per_player`,
-  `illegal_move_retries`), которые в игре неизменны → промпт кэшируем (D-019).
-  Канонические ключи вынесены в `RESPONSE_KEYS` (единый источник для текста и
-  тестов); пример-объект из промпта разбирается тем же `parse_response`, что и
-  реальные ответы (тест согласованности). `system_message` оборачивает текст в
-  `MessageRecord(role="system")`. Тесты `tests/test_prompts_system.py` (11 шт):
-  все ключи протокола в тексте, подстановка дефолтных/кастомных лимитов, нет
-  неподставленных плейсхолдеров, обе нотации + запрет пропуска, пример = валидный
-  JSON с ключами протокола, round-trip через `parse_response`, обёртка в
-  `MessageRecord`, стабильность текста, отсутствие секретов.
-- **Следующая задача:** `feat(prompts): context builder` из `docs/TODO.md`
-  (Phase 3) — сборка per-turn контекста: цвет+номер хода, FEN, легальные ходы
-  (SAN), PGN, история, объяснения обеих сторон, остаток подсказок, причина ретрая.
+- **Фаза:** Phase 3 — Игровой цикл (идёт). Phase 0–2 закрыты. Готовы `ModelPlayer`,
+  системный промпт и context builder; дальше — главный цикл партии
+  (`feat(arena): game runner core loop`).
+- **Последняя завершённая задача:** `test(prompts): context builder` —
+  `tests/test_prompts_context_fixtures.py` (8 шт), фикстурные сценарии поверх
+  `build_context`: точный блок объяснений обеих сторон в порядке ходов, валидность
+  встроенного PGN-снимка (round-trip через `chess.pgn.read_game`), совпадение
+  показанного списка легальных ходов с доской (D-005), отслеживание очереди по
+  префиксам партии, порядок секций, комбинация «подсказка+ретрай» с правильным
+  порядком, остаток подсказок по стороне хода, отсутствие секретов. Перед этим —
+  `feat(prompts): context builder`: `src/arena/prompts/context.py`
+  (`build_context`/`context_message`). Из `GameRecord` (история, игроки, лимиты) и
+  живого `Board` собирает per-turn контекст (спека 3.6): цвет и номер хода, FEN,
+  легальные ходы в SAN, PGN-снимок (через `core.build_pgn`, `include_reasoning=
+  False`), объяснения обеих сторон, остаток подсказок стороны, опц. инъекцию
+  подсказки движка (D-010) и блок коррекции нелегального хода (D-006). Причина
+  ретрая — `IllegalAttempt` (raw+reason), отдельный тип не вводился. Тесты
+  `tests/test_prompts_context.py` (19 шт).
+- **Следующая задача:** `feat(arena): game runner core loop` из `docs/TODO.md`
+  (Phase 3) — главный игровой цикл: чередование сторон, ведение `Board`+`GameRecord`,
+  события. Соберёт вместе `ModelPlayer` + `system_message`/`context_message`.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -37,7 +37,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 205 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + prompts system + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 232 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + prompts system + prompts context (+ fixtures) + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -73,3 +73,5 @@
 | 2026-06-09 | `test(providers): mocked transport`: `tests/test_providers_transport.py` (19 шт) — единый кросс-провайдерный контракт за фабрикой (реестр=3, тип провайдера, сырой текст, обёртка+маскирование ошибки, пустой ответ, ленивое кэширование, `repr` без ключа), параметризован по openai/anthropic/gemini через `_Case`/`_make_fake_client`; **Phase 2 закрыта**; pytest зелёный (174 passed) | `375b851` | `feat(arena): model player` |
 | 2026-06-09 | `feat(arena): model player`: `src/arena/arena/player.py` (`ModelPlayer` + `parse_response`) — обёртка над провайдером: `respond` → `complete` → разбор сырого текста в `LLMResponse` (D-007); устойчивый JSON-парсер (баланс `{}` с учётом строк, выбор объекта с `move`, терпимость к типам, деградация без JSON → move=None); `info`/`repr` без ключа; **Phase 3 началась**; тесты `test_arena_player.py` (20 шт); pytest зелёный (194 passed) | `6a999ac` | `feat(prompts): system prompt and response format` |
 | 2026-06-09 | `feat(prompts): system prompt and response format`: `src/arena/prompts/system.py` (`build_system_prompt`/`system_message`/`RESPONSE_KEYS`) — статичный системный промпт (правила + строгий JSON-протокол D-007), английский, зависит только от лимитов партии → кэшируем (D-019); ключи протокола вынесены в `RESPONSE_KEYS`, согласованность с `parse_response` под тестом; D-019 в DECISIONS; тесты `test_prompts_system.py` (11 шт); pytest зелёный (205 passed) | `99824d5` | `feat(prompts): context builder` |
+| 2026-06-09 | `feat(prompts): context builder`: `src/arena/prompts/context.py` (`build_context`/`context_message`) — per-turn контекст (спека 3.6) из `GameRecord`+`Board`: цвет/номер хода, FEN, легальные ходы SAN, PGN-снимок (`core.build_pgn`, без комментариев), объяснения обеих сторон, остаток подсказок, опц. инъекция подсказки (D-010) и коррекция ретрая (D-006, причина = `IllegalAttempt`); тесты `test_prompts_context.py` (19 шт); pytest зелёный (224 passed) | `085514d` | `test(prompts): context builder` |
+| 2026-06-09 | `test(prompts): context builder`: `test_prompts_context_fixtures.py` (8 шт) — фикстурные сценарии: точный блок объяснений, round-trip встроенного PGN-снимка, совпадение списка легальных ходов с доской, отслеживание очереди по префиксам, порядок секций, «подсказка+ретрай», остаток подсказок по стороне, без секретов; pytest зелёный (232 passed) | _pending_ | `feat(arena): game runner core loop` |

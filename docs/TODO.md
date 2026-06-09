@@ -37,7 +37,7 @@
 ## Phase 3 — Игровой цикл
 - [x] `feat(prompts): system prompt and response format` — правила + строгий JSON-формат ответа.
 - [x] `feat(prompts): context builder` — FEN, легальные ходы, PGN, история, объяснения обеих сторон, остаток подсказок, причина ретрая.
-- [ ] `test(prompts): context builder` — содержимое контекста на фикстурах.
+- [x] `test(prompts): context builder` — содержимое контекста на фикстурах.
 - [ ] `feat(arena): game runner core loop` — чередование сторон, ведение board+record, события.
 - [ ] `feat(arena): illegal move retry and technical loss` — коррекция, счётчик, 3-strike → `technical_loss`.
 - [ ] `feat(arena): game end and result/termination` — проставление `result`/`termination`, обработка `resign`.
