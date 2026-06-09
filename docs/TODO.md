@@ -77,7 +77,7 @@
 - [x] `feat(obs): logging with key masking` — структурное логирование, маскирование секретов (D-023).
 - [x] `chore: graceful degradation without engine` — единый путь отключения ★ при отсутствии Stockfish; `engine.build_engine` + подключение движка/пост-анализа в веб-партии (D-024).
 - [x] `test: full e2e run` — прогон база+★ на фейковых игроках (`test_full_e2e.py`: партия+подсказка+анализ+комментарий → game.json/PGN/report.html).
-- [ ] `docs: finalize and add sample game` — пример `game.json`/`game.pgn`/`report.html`, актуализация доков.
+- [x] `docs: finalize and add sample game` — пример в `examples/sample-game/` (`game.json`/`game.pgn`/`report.html`, реальный анализ Stockfish) + генератор `scripts/generate_sample_game.py`; README/ROADMAP актуализированы. **Phase 7 закрыта.**
 
 ## Бэклог (после)
 - [ ] Турниры из нескольких партий, таблица результатов.

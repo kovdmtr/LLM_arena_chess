@@ -1,0 +1,20 @@
+[Event "LLM Chess Arena"]
+[Site "LLM Chess Arena"]
+[Date "2026.06.09"]
+[Round "1"]
+[White "GPT-4o"]
+[Black "Claude Opus 4.8"]
+[Result "1-0"]
+[Termination "checkmate"]
+[WhiteModel "gpt-4o"]
+[BlackModel "claude-opus-4-8"]
+[WhiteProvider "openai"]
+[BlackProvider "anthropic"]
+
+1. e4 { Открываю центр и освобождаю ферзя со слоном. } 1... e5
+{ Симметрично борюсь за центр. } 2. Bc4
+{ Слон нацеливается на f7 — самое слабое поле чёрных. } 2... Nc6
+{ Развиваю коня и держу e5. } 3. Qh5
+{ Создаю двойную угрозу на f7 вместе со слоном. } 3... Nf6
+{ Атакую ферзя h5 — но это упускает угрозу мата на f7. } 4. Qxf7#
+{ Беру на f7 — это мат: король не уходит, фигуры не закрывают. } 1-0

@@ -1,0 +1,230 @@
+{
+  "id": "sample-game",
+  "created_at": "2026-06-09T12:00:00Z",
+  "players": {
+    "white": {
+      "model_id": "gpt-4o",
+      "provider": "openai",
+      "display_name": "GPT-4o"
+    },
+    "black": {
+      "model_id": "claude-opus-4-8",
+      "provider": "anthropic",
+      "display_name": "Claude Opus 4.8"
+    }
+  },
+  "settings": {
+    "illegal_move_retries": 3,
+    "hints_per_player": 3,
+    "include_legal_moves": false
+  },
+  "result": "1-0",
+  "termination": "checkmate",
+  "moves": [
+    {
+      "ply": 1,
+      "side": "white",
+      "san": "e4",
+      "uci": "e2e4",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+      "reasoning": "Открываю центр и освобождаю ферзя со слоном.",
+      "illegal_attempts": [],
+      "hint_used": true,
+      "hint": {
+        "best_move": "e2e4",
+        "eval_cp": 49,
+        "mate_in": null
+      },
+      "engine_eval_cp": 34,
+      "classification": "good"
+    },
+    {
+      "ply": 2,
+      "side": "black",
+      "san": "e5",
+      "uci": "e7e5",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+      "reasoning": "Симметрично борюсь за центр.",
+      "illegal_attempts": [],
+      "hint_used": false,
+      "hint": null,
+      "engine_eval_cp": 36,
+      "classification": "good"
+    },
+    {
+      "ply": 3,
+      "side": "white",
+      "san": "Bc4",
+      "uci": "f1c4",
+      "fen_before": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+      "fen_after": "rnbqkbnr/pppp1ppp/8/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR b KQkq - 1 2",
+      "reasoning": "Слон нацеливается на f7 — самое слабое поле чёрных.",
+      "illegal_attempts": [],
+      "hint_used": false,
+      "hint": null,
+      "engine_eval_cp": -2,
+      "classification": "good"
+    },
+    {
+      "ply": 4,
+      "side": "black",
+      "san": "Nc6",
+      "uci": "b8c6",
+      "fen_before": "rnbqkbnr/pppp1ppp/8/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR b KQkq - 1 2",
+      "fen_after": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 2 3",
+      "reasoning": "Развиваю коня и держу e5.",
+      "illegal_attempts": [],
+      "hint_used": false,
+      "hint": null,
+      "engine_eval_cp": 22,
+      "classification": "good"
+    },
+    {
+      "ply": 5,
+      "side": "white",
+      "san": "Qh5",
+      "uci": "d1h5",
+      "fen_before": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 2 3",
+      "fen_after": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3",
+      "reasoning": "Создаю двойную угрозу на f7 вместе со слоном.",
+      "illegal_attempts": [],
+      "hint_used": false,
+      "hint": null,
+      "engine_eval_cp": -37,
+      "classification": "inaccuracy"
+    },
+    {
+      "ply": 6,
+      "side": "black",
+      "san": "Nf6",
+      "uci": "g8f6",
+      "fen_before": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3",
+      "fen_after": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+      "reasoning": "Атакую ферзя h5 — но это упускает угрозу мата на f7.",
+      "illegal_attempts": [],
+      "hint_used": false,
+      "hint": null,
+      "engine_eval_cp": 99999,
+      "classification": "blunder"
+    },
+    {
+      "ply": 7,
+      "side": "white",
+      "san": "Qxf7#",
+      "uci": "h5f7",
+      "fen_before": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+      "fen_after": "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
+      "reasoning": "Беру на f7 — это мат: король не уходит, фигуры не закрывают.",
+      "illegal_attempts": [],
+      "hint_used": false,
+      "hint": null,
+      "engine_eval_cp": 100000,
+      "classification": "good"
+    }
+  ],
+  "messages": {
+    "white": [
+      {
+        "role": "system",
+        "content": "You are a chess engine playing a full game of standard chess against another opponent. There is no time control. You always play strictly by the rules of classical chess.\n\nHow the game works:\n- On every turn you receive the current position: your color and move number, the position in FEN, the PGN so far, and both players' previous explanations.\n- You choose exactly one move. It MUST be legal in the current position. Give the move in standard algebraic notation (SAN, e.g. \"Nf3\", \"exd5\", \"O-O\", \"e8=Q+\") or in UCI coordinate notation (e.g. \"g1f3\", \"e7e8q\"). Do not pass; skipping a move is not allowed.\n- If your move is illegal or cannot be understood, you receive a correction (the reason) and must try again. 3 illegal attempts in a row on the same turn lose the game on technical grounds, so make sure your move is legal before you answer.\n\nHints:\n- You have 3 engine hints for the entire game. Set \"request_hint\" to true to spend one. The engine's best move and a short evaluation are then added to your context on your next turn. Once your hints are used up, requesting more has no effect.\n\nResigning:\n- Set \"resign\" to true only to voluntarily concede the game. Use it sparingly, in a clearly lost position.\n\nResponse format (strict):\n- Reply with EXACTLY ONE JSON object and nothing else — no markdown fences, no prose around it. The object has these keys:\n  - \"reasoning\": string — a brief explanation of your choice (used for the game log and shown to your opponent).\n  - \"move\": string — your move in SAN or UCI, taken from the legal moves. Use null only when you are resigning or only requesting a hint.\n  - \"request_hint\": boolean — true to spend one engine hint, otherwise false.\n  - \"resign\": boolean — true to resign, otherwise false.\n\nExample of a normal move:\n{\"reasoning\": \"Develop the knight and fight for the center.\", \"move\": \"Nf3\", \"request_hint\": false, \"resign\": false}"
+      },
+      {
+        "role": "user",
+        "content": "You are playing White. It is move 1, your turn.\n\nCurrent position (FEN):\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\n\nGame so far (PGN):\n[Event \"LLM Chess Arena\"]\n[Site \"LLM Chess Arena\"]\n[Date \"2026.06.09\"]\n[Round \"1\"]\n[White \"GPT-4o\"]\n[Black \"Claude Opus 4.8\"]\n[Result \"*\"]\n[WhiteModel \"gpt-4o\"]\n[BlackModel \"claude-opus-4-8\"]\n[WhiteProvider \"openai\"]\n[BlackProvider \"anthropic\"]\n\n*\n\nMove explanations so far:\n(none — this is the first move)\n\nHints remaining: 3\n\nReply with one JSON object: {\"reasoning\", \"move\", \"request_hint\", \"resign\"}."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"reasoning\":\"Открываю центр и освобождаю ферзя со слоном.\",\"move\":\"e4\",\"request_hint\":true,\"resign\":false}"
+      },
+      {
+        "role": "user",
+        "content": "You are playing White. It is move 1, your turn.\n\nCurrent position (FEN):\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\n\nGame so far (PGN):\n[Event \"LLM Chess Arena\"]\n[Site \"LLM Chess Arena\"]\n[Date \"2026.06.09\"]\n[Round \"1\"]\n[White \"GPT-4o\"]\n[Black \"Claude Opus 4.8\"]\n[Result \"*\"]\n[WhiteModel \"gpt-4o\"]\n[BlackModel \"claude-opus-4-8\"]\n[WhiteProvider \"openai\"]\n[BlackProvider \"anthropic\"]\n\n*\n\nMove explanations so far:\n(none — this is the first move)\n\nHints remaining: 2\n\nEngine hint (requested earlier):\nbest move e2e4, evaluation +0.49 (from your side)\n\nReply with one JSON object: {\"reasoning\", \"move\", \"request_hint\", \"resign\"}."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"reasoning\":\"Открываю центр и освобождаю ферзя со слоном.\",\"move\":\"e4\",\"request_hint\":false,\"resign\":false}"
+      },
+      {
+        "role": "user",
+        "content": "You are playing White. It is move 2, your turn.\n\nCurrent position (FEN):\nrnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2\n\nGame so far (PGN):\n[Event \"LLM Chess Arena\"]\n[Site \"LLM Chess Arena\"]\n[Date \"2026.06.09\"]\n[Round \"1\"]\n[White \"GPT-4o\"]\n[Black \"Claude Opus 4.8\"]\n[Result \"*\"]\n[WhiteModel \"gpt-4o\"]\n[BlackModel \"claude-opus-4-8\"]\n[WhiteProvider \"openai\"]\n[BlackProvider \"anthropic\"]\n\n1. e4 e5 *\n\nMove explanations so far:\n1. White e4 — Открываю центр и освобождаю ферзя со слоном.\n1. Black e5 — Симметрично борюсь за центр.\n\nHints remaining: 2\n\nReply with one JSON object: {\"reasoning\", \"move\", \"request_hint\", \"resign\"}."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"reasoning\":\"Слон нацеливается на f7 — самое слабое поле чёрных.\",\"move\":\"Bc4\",\"request_hint\":false,\"resign\":false}"
+      },
+      {
+        "role": "user",
+        "content": "You are playing White. It is move 3, your turn.\n\nCurrent position (FEN):\nr1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 2 3\n\nGame so far (PGN):\n[Event \"LLM Chess Arena\"]\n[Site \"LLM Chess Arena\"]\n[Date \"2026.06.09\"]\n[Round \"1\"]\n[White \"GPT-4o\"]\n[Black \"Claude Opus 4.8\"]\n[Result \"*\"]\n[WhiteModel \"gpt-4o\"]\n[BlackModel \"claude-opus-4-8\"]\n[WhiteProvider \"openai\"]\n[BlackProvider \"anthropic\"]\n\n1. e4 e5 2. Bc4 Nc6 *\n\nMove explanations so far:\n1. White e4 — Открываю центр и освобождаю ферзя со слоном.\n1. Black e5 — Симметрично борюсь за центр.\n2. White Bc4 — Слон нацеливается на f7 — самое слабое поле чёрных.\n2. Black Nc6 — Развиваю коня и держу e5.\n\nHints remaining: 2\n\nReply with one JSON object: {\"reasoning\", \"move\", \"request_hint\", \"resign\"}."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"reasoning\":\"Создаю двойную угрозу на f7 вместе со слоном.\",\"move\":\"Qh5\",\"request_hint\":false,\"resign\":false}"
+      },
+      {
+        "role": "user",
+        "content": "You are playing White. It is move 4, your turn.\n\nCurrent position (FEN):\nr1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4\n\nGame so far (PGN):\n[Event \"LLM Chess Arena\"]\n[Site \"LLM Chess Arena\"]\n[Date \"2026.06.09\"]\n[Round \"1\"]\n[White \"GPT-4o\"]\n[Black \"Claude Opus 4.8\"]\n[Result \"*\"]\n[WhiteModel \"gpt-4o\"]\n[BlackModel \"claude-opus-4-8\"]\n[WhiteProvider \"openai\"]\n[BlackProvider \"anthropic\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 *\n\nMove explanations so far:\n1. White e4 — Открываю центр и освобождаю ферзя со слоном.\n1. Black e5 — Симметрично борюсь за центр.\n2. White Bc4 — Слон нацеливается на f7 — самое слабое поле чёрных.\n2. Black Nc6 — Развиваю коня и держу e5.\n3. White Qh5 — Создаю двойную угрозу на f7 вместе со слоном.\n3. Black Nf6 — Атакую ферзя h5 — но это упускает угрозу мата на f7.\n\nHints remaining: 2\n\nReply with one JSON object: {\"reasoning\", \"move\", \"request_hint\", \"resign\"}."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"reasoning\":\"Беру на f7 — это мат: король не уходит, фигуры не закрывают.\",\"move\":\"Qxf7#\",\"request_hint\":false,\"resign\":false}"
+      }
+    ],
+    "black": [
+      {
+        "role": "system",
+        "content": "You are a chess engine playing a full game of standard chess against another opponent. There is no time control. You always play strictly by the rules of classical chess.\n\nHow the game works:\n- On every turn you receive the current position: your color and move number, the position in FEN, the PGN so far, and both players' previous explanations.\n- You choose exactly one move. It MUST be legal in the current position. Give the move in standard algebraic notation (SAN, e.g. \"Nf3\", \"exd5\", \"O-O\", \"e8=Q+\") or in UCI coordinate notation (e.g. \"g1f3\", \"e7e8q\"). Do not pass; skipping a move is not allowed.\n- If your move is illegal or cannot be understood, you receive a correction (the reason) and must try again. 3 illegal attempts in a row on the same turn lose the game on technical grounds, so make sure your move is legal before you answer.\n\nHints:\n- You have 3 engine hints for the entire game. Set \"request_hint\" to true to spend one. The engine's best move and a short evaluation are then added to your context on your next turn. Once your hints are used up, requesting more has no effect.\n\nResigning:\n- Set \"resign\" to true only to voluntarily concede the game. Use it sparingly, in a clearly lost position.\n\nResponse format (strict):\n- Reply with EXACTLY ONE JSON object and nothing else — no markdown fences, no prose around it. The object has these keys:\n  - \"reasoning\": string — a brief explanation of your choice (used for the game log and shown to your opponent).\n  - \"move\": string — your move in SAN or UCI, taken from the legal moves. Use null only when you are resigning or only requesting a hint.\n  - \"request_hint\": boolean — true to spend one engine hint, otherwise false.\n  - \"resign\": boolean — true to resign, otherwise false.\n\nExample of a normal move:\n{\"reasoning\": \"Develop the knight and fight for the center.\", \"move\": \"Nf3\", \"request_hint\": false, \"resign\": false}"
+      },
+      {
+        "role": "user",
+        "content": "You are playing Black. It is move 1, your turn.\n\nCurrent position (FEN):\nrnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1\n\nGame so far (PGN):\n[Event \"LLM Chess Arena\"]\n[Site \"LLM Chess Arena\"]\n[Date \"2026.06.09\"]\n[Round \"1\"]\n[White \"GPT-4o\"]\n[Black \"Claude Opus 4.8\"]\n[Result \"*\"]\n[WhiteModel \"gpt-4o\"]\n[BlackModel \"claude-opus-4-8\"]\n[WhiteProvider \"openai\"]\n[BlackProvider \"anthropic\"]\n\n1. e4 *\n\nMove explanations so far:\n1. White e4 — Открываю центр и освобождаю ферзя со слоном.\n\nHints remaining: 3\n\nReply with one JSON object: {\"reasoning\", \"move\", \"request_hint\", \"resign\"}."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"reasoning\":\"Симметрично борюсь за центр.\",\"move\":\"e5\",\"request_hint\":false,\"resign\":false}"
+      },
+      {
+        "role": "user",
+        "content": "You are playing Black. It is move 2, your turn.\n\nCurrent position (FEN):\nrnbqkbnr/pppp1ppp/8/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR b KQkq - 1 2\n\nGame so far (PGN):\n[Event \"LLM Chess Arena\"]\n[Site \"LLM Chess Arena\"]\n[Date \"2026.06.09\"]\n[Round \"1\"]\n[White \"GPT-4o\"]\n[Black \"Claude Opus 4.8\"]\n[Result \"*\"]\n[WhiteModel \"gpt-4o\"]\n[BlackModel \"claude-opus-4-8\"]\n[WhiteProvider \"openai\"]\n[BlackProvider \"anthropic\"]\n\n1. e4 e5 2. Bc4 *\n\nMove explanations so far:\n1. White e4 — Открываю центр и освобождаю ферзя со слоном.\n1. Black e5 — Симметрично борюсь за центр.\n2. White Bc4 — Слон нацеливается на f7 — самое слабое поле чёрных.\n\nHints remaining: 3\n\nReply with one JSON object: {\"reasoning\", \"move\", \"request_hint\", \"resign\"}."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"reasoning\":\"Развиваю коня и держу e5.\",\"move\":\"Nc6\",\"request_hint\":false,\"resign\":false}"
+      },
+      {
+        "role": "user",
+        "content": "You are playing Black. It is move 3, your turn.\n\nCurrent position (FEN):\nr1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3\n\nGame so far (PGN):\n[Event \"LLM Chess Arena\"]\n[Site \"LLM Chess Arena\"]\n[Date \"2026.06.09\"]\n[Round \"1\"]\n[White \"GPT-4o\"]\n[Black \"Claude Opus 4.8\"]\n[Result \"*\"]\n[WhiteModel \"gpt-4o\"]\n[BlackModel \"claude-opus-4-8\"]\n[WhiteProvider \"openai\"]\n[BlackProvider \"anthropic\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 *\n\nMove explanations so far:\n1. White e4 — Открываю центр и освобождаю ферзя со слоном.\n1. Black e5 — Симметрично борюсь за центр.\n2. White Bc4 — Слон нацеливается на f7 — самое слабое поле чёрных.\n2. Black Nc6 — Развиваю коня и держу e5.\n3. White Qh5 — Создаю двойную угрозу на f7 вместе со слоном.\n\nHints remaining: 3\n\nReply with one JSON object: {\"reasoning\", \"move\", \"request_hint\", \"resign\"}."
+      },
+      {
+        "role": "assistant",
+        "content": "{\"reasoning\":\"Атакую ферзя h5 — но это упускает угрозу мата на f7.\",\"move\":\"Nf6\",\"request_hint\":false,\"resign\":false}"
+      }
+    ]
+  },
+  "hints_used": {
+    "white": 1,
+    "black": 0
+  },
+  "analysis": {
+    "white": {
+      "accuracy": 0.75,
+      "blunders": 0,
+      "mistakes": 0,
+      "inaccuracies": 1
+    },
+    "black": {
+      "accuracy": 0.6666666666666666,
+      "blunders": 1,
+      "mistakes": 0,
+      "inaccuracies": 0
+    },
+    "key_moments": [
+      {
+        "ply": 6,
+        "classification": "blunder",
+        "comment": ""
+      }
+    ]
+  }
+}
