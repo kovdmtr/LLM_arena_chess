@@ -59,7 +59,7 @@
 - [x] `feat(analysis): centipawn loss and classification` ★ — пороги из конфига, `AnalysisSummary`.
 - [x] `test(analysis): classification thresholds` ★.
 - [ ] `feat(analysis): llm commentary of key moments` ★ (опц.) — комментарий на основе линий движка и рассуждения.
-- [ ] `feat(report): show eval and classification badges` ★ — бейджи и сводка в отчёте.
+- [x] `feat(report): show eval and classification badges` ★ — бейджи и сводка в отчёте.
 
 ## Phase 6 — ★ Веб-интерфейс
 - [ ] `feat(web): fastapi app skeleton` ★ — приложение, static/templates, health.

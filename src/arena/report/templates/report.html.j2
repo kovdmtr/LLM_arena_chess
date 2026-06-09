@@ -23,6 +23,23 @@
     .player .model { color: #57534e; font-size: .85rem; }
     .result { text-align: center; font-size: 1.25rem; font-weight: 700; margin: 1rem 0; }
     .result .termination { display: block; font-size: .85rem; font-weight: 400; color: #57534e; }
+    section.analysis { margin: 0 0 2rem; }
+    section.analysis h2 { text-align: center; font-size: 1.1rem; margin: 0 0 1rem; }
+    .analysis-sides { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .analysis-side {
+      background: #fff; border: 1px solid #e7e5e4; border-radius: .5rem;
+      padding: .75rem 1.25rem; min-width: 200px;
+    }
+    .analysis-side .side-name { font-weight: 600; margin-bottom: .35rem; }
+    .analysis-side .accuracy { font-size: 1.4rem; font-weight: 700; }
+    .analysis-side .accuracy .label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #78716c; }
+    .analysis-side .counts { color: #57534e; font-size: .85rem; margin-top: .25rem; }
+    ul.key-moments { list-style: none; padding: 0; margin: 1rem auto 0; max-width: 520px; display: grid; gap: .35rem; }
+    ul.key-moments li {
+      background: #fff; border: 1px solid #e7e5e4; border-radius: .5rem;
+      padding: .4rem .75rem; font-size: .9rem;
+    }
+    ul.key-moments .comment { color: #57534e; }
     ol.moves { list-style: none; padding: 0; margin: 0; display: grid; gap: 1.25rem; }
     li.move {
       background: #fff; border: 1px solid #e7e5e4; border-radius: .5rem;
@@ -73,6 +90,36 @@
       {% if game.termination %}<span class="termination">{{ game.termination }}</span>{% endif %}
     </div>
   </header>
+
+  {% if game.analysis %}
+  <section class="analysis">
+    <h2>Анализ партии</h2>
+    <div class="analysis-sides">
+      {% for side, player in [("white", white), ("black", black)] %}
+      {% set stats = game.analysis.white if side == "white" else game.analysis.black %}
+      <div class="analysis-side">
+        <div class="side-name">{% if side == "white" %}Белые{% else %}Чёрные{% endif %} · {{ player.display_name }}</div>
+        <div class="accuracy">
+          {% if stats.accuracy is not none %}{{ "%.0f"|format(stats.accuracy * 100) }}%{% else %}—{% endif %}
+          <span class="label">точность</span>
+        </div>
+        <div class="counts">{{ stats.blunders }} зевков · {{ stats.mistakes }} ошибок · {{ stats.inaccuracies }} неточностей</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if game.analysis.key_moments %}
+    <ul class="key-moments">
+      {% for km in game.analysis.key_moments %}
+      <li>
+        <span class="num">{{ (km.ply + 1) // 2 }}{% if km.ply % 2 == 1 %}.{% else %}...{% endif %}</span>
+        <span class="badge {{ km.classification }}">{{ km.classification }}</span>
+        {% if km.comment %}<span class="comment">{{ km.comment }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  {% endif %}
 
   {% if moves %}
   <ol class="moves">

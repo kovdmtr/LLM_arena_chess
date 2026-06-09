@@ -4,7 +4,15 @@ from datetime import datetime, timezone
 
 import chess
 
-from arena import GameRecord, HintRecord, MoveRecord, PlayerInfo
+from arena import (
+    AnalysisSummary,
+    GameRecord,
+    HintRecord,
+    KeyMoment,
+    MoveRecord,
+    PlayerAnalysis,
+    PlayerInfo,
+)
 from arena.report import render_report_html
 
 _SCHOLARS_MATE = ["e4", "e5", "Bc4", "Nc6", "Qh5", "Nf6", "Qxf7#"]
@@ -132,6 +140,67 @@ def test_report_shows_classification_and_eval_when_present():
     html = render_report_html(game)
     assert "blunder" in html
     assert "-250 cp" in html
+
+
+# --- сводка пост-анализа ★ (AnalysisSummary) -------------------------------
+
+
+def test_report_omits_analysis_summary_without_analysis():
+    html = render_report_html(_game(["e4"]))
+    assert "Анализ партии" not in html
+    assert "точность" not in html
+
+
+def test_report_shows_analysis_summary_when_present():
+    game = _game(["e4", "e5"])
+    game.analysis = AnalysisSummary(
+        white=PlayerAnalysis(accuracy=1.0, blunders=0, mistakes=0, inaccuracies=1),
+        black=PlayerAnalysis(accuracy=0.5, blunders=2, mistakes=1, inaccuracies=0),
+    )
+    html = render_report_html(game)
+    assert "Анализ партии" in html
+    # Точность как проценты по обеим сторонам.
+    assert "100%" in html
+    assert "50%" in html
+    # Счётчики ошибок чёрных.
+    assert "2 зевков" in html
+    assert "1 ошибок" in html
+
+
+def test_report_shows_dash_for_missing_accuracy():
+    game = _game(["e4"])
+    game.analysis = AnalysisSummary(white=PlayerAnalysis(accuracy=None))
+    html = render_report_html(game)
+    assert "Анализ партии" in html
+    assert "—" in html
+
+
+def test_report_shows_key_moments():
+    game = _game(["e4", "e5", "Bc4"])
+    game.analysis = AnalysisSummary(
+        key_moments=[
+            KeyMoment(ply=1, classification="brilliant", comment="сильный центр"),
+            KeyMoment(ply=2, classification="blunder"),
+        ]
+    )
+    html = render_report_html(game)
+    assert "brilliant" in html
+    assert "blunder" in html
+    # Комментарий ключевого момента отображается (и экранируется как обычный текст).
+    assert "сильный центр" in html
+    # Нумерация: 1-й полуход белых → "1.", 2-й чёрных → "1...".
+    assert "1." in html
+    assert "1..." in html
+
+
+def test_report_escapes_html_in_key_moment_comment():
+    game = _game(["e4"])
+    game.analysis = AnalysisSummary(
+        key_moments=[KeyMoment(ply=1, classification="mistake", comment="<i>x</i>")]
+    )
+    html = render_report_html(game)
+    assert "<i>x</i>" not in html
+    assert "&lt;i&gt;x" in html
 
 
 def test_report_shows_hint_when_present():
