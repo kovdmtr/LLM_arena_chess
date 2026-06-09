@@ -8,21 +8,22 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 1 — Шахматное ядро (`Board` wrapper + парсинг ходов с полным покрытием).
-- **Последняя завершённая задача:** `feat(models): pydantic data models` —
-  `src/arena/models.py`: типизированная форма `game.json` (D-004). Модели
-  `LLMResponse` (протокол D-007), `MessageRecord`, `IllegalAttempt`, `HintRecord`,
-  `MoveRecord`, `PlayerInfo`, `PlayerSettings`, `PlayerAnalysis`, `KeyMoment`,
-  `AnalysisSummary`, `GameRecord`. Стороны/роли/классы хода — через `Literal`
-  (`Side`/`Role`/`Classification`); `model_id` потребовал `protected_namespaces=()`
-  у `PlayerInfo` (иначе pydantic ругается на префикс `model_`). Все модели
-  экспортированы из `arena`. Тесты `tests/test_models.py` (15 шт): дефолты,
-  валидация (плохой `ply`/`side`/`classification`/`role`), независимость коллекций
-  у `default_factory`, round-trip `GameRecord` через JSON. Секреты в модели не
-  попадают (D-003).
-- **Следующая задача:** `feat(core): build PGN from GameRecord` из `docs/TODO.md`
-  (Phase 1) — сборка PGN из `GameRecord`: стандартные теги, ходы SAN,
-  комментарии-рассуждения (`{...}`). Затем `test(core): pgn export`.
+- **Фаза:** Phase 1 — Шахматное ядро (почти закрыта: остался `test(core): pgn export`).
+- **Последняя завершённая задача:** `feat(core): build PGN from GameRecord` —
+  `src/arena/core/pgn.py`: публичная `build_pgn(game) -> str` собирает текстовый PGN
+  из `GameRecord` через `python-chess` (D-004 — PGN порождается из `game.json`).
+  Теги: семь обязательных (Event/Site/Date/Round/White/Black/Result) + служебные
+  `Termination`, `WhiteModel`/`BlackModel`, `WhiteProvider`/`BlackProvider` (D-016).
+  Ходы применяются из `MoveRecord.uci` → корректные SAN и нумерация; рассуждения
+  идут комментариями `{...}` (опц. флаг `include_reasoning`); `_clean_comment`
+  обезвреживает фигурные скобки (`{`/`}` → `(`/`)`) и переводы строк. Секретов в PGN
+  нет (D-003) — в тегах только `model_id`. Экспорт из `arena.core`. Тесты
+  `tests/test_pgn.py` (9 шт): семь тегов, служебные теги без секретов, SAN-порядок,
+  комментарии-рассуждения и их отключение, санитайз скобок/переводов строк,
+  round-trip через `chess.pgn.read_game`, пустая партия.
+- **Следующая задача:** `test(core): pgn export` из `docs/TODO.md` (Phase 1) —
+  расширенный блок тестов на валидность/совместимость PGN (полноценная партия,
+  перепарсинг тегов, кромочные случаи). После — переход в Phase 2 (провайдеры).
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -31,7 +32,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 91 passed: config + catalog + board + endgame + move parsing + models + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 100 passed: config + catalog + board + endgame + move parsing + models + pgn + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -58,3 +59,4 @@
 | 2026-06-09 | `test(core): move parsing`: +11 тестов (en passant, регистр UCI, неоднозначность, null-move); guard против null-move `0000`/`--` в `_to_parsed` (D-015); pytest зелёный (65 passed) | `fae4aa2` | `feat(models): pydantic data models` |
 | 2026-06-09 | `test(config): settings and catalog`: +11 краевых тестов загрузки/валидации (settings +7, catalog +4); Phase 0 закрыта; pytest зелёный (76 passed) | `5efa519` | `feat(models): pydantic data models` |
 | 2026-06-09 | `feat(models): pydantic data models`: `src/arena/models.py` (11 моделей — `GameRecord` и др., Literal-типы, `protected_namespaces=()` для `model_id`), экспорт из `arena`; тесты `test_models.py` (15 шт, round-trip JSON); pytest зелёный (91 passed) | `8ff5ba8` | `feat(core): build PGN from GameRecord` |
+| 2026-06-09 | `feat(core): build PGN from GameRecord`: `core/pgn.py` (`build_pgn`) — 7 тегов + служебные (D-016), ходы из uci → SAN, рассуждения как `{...}`, санитайз скобок/переносов; экспорт из `arena.core`; тесты `test_pgn.py` (9 шт); pytest зелёный (100 passed) | _pending_ | `test(core): pgn export` |
