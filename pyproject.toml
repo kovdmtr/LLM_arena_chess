@@ -17,6 +17,7 @@ dependencies = [
     "google-genai>=0.3",
     "fastapi>=0.111",
     "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "jinja2>=3.1",

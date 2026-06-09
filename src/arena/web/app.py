@@ -16,12 +16,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, Request, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from arena.config import ModelCatalog, Settings
+from arena.config import ConfigError, ModelCatalog, Settings
+from arena.web.games import GameManager
 
 # Каталог пакета веб-слоя; статика и шаблоны лежат рядом с этим модулем.
 _WEB_DIR = Path(__file__).resolve().parent
@@ -32,17 +33,24 @@ APP_TITLE = "LLM Chess Arena"
 APP_VERSION = "0.1.0"
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
-    """Собрать экземпляр FastAPI-приложения арены (каркас Phase 6).
+def create_app(
+    settings: Settings | None = None,
+    *,
+    game_manager: GameManager | None = None,
+) -> FastAPI:
+    """Собрать экземпляр FastAPI-приложения арены (Phase 6).
 
     ``settings`` (опц.) кладётся в ``app.state.settings``; роуты, которым нужен
     каталог моделей, строят его лениво (``_get_catalog``) — загрузкой ``Settings``
-    из ``config.yaml``/``.env``, если он не передан. Шаблоны доступны как
+    из ``config.yaml``/``.env``, если он не передан. ``game_manager`` (опц.)
+    переопределяет планировщик фоновых партий (шов для тестов с фейковыми игроками);
+    по умолчанию строится лениво из настроек (``_get_manager``). Шаблоны доступны как
     ``app.state.templates``. Монтируется статика ``/static`` и поднимается health.
     """
     app = FastAPI(title=APP_TITLE, version=APP_VERSION)
     app.state.settings = settings
     app.state.catalog = None  # строится лениво из settings (см. _get_catalog)
+    app.state.game_manager = game_manager  # либо лениво в _get_manager
 
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     app.state.templates = templates
@@ -65,27 +73,71 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def new_game(request: Request) -> HTMLResponse:
         """Страница выбора моделей: форма выбора белых/чёрных из каталога.
 
-        Форма отправляется на ``POST /games`` (запуск партии — следующая задача).
-        Модели без заданного API-ключа показываются, но помечены и недоступны для
-        выбора (ключ не задан в ``.env``).
+        Форма отправляется на ``POST /games`` (запуск партии). Модели без заданного
+        API-ключа показываются, но помечены и недоступны для выбора (ключ не задан).
+        """
+        return _render_new_game(request, _get_catalog(request.app))
+
+    @app.post("/games", response_model=None)
+    def start_game(
+        request: Request,
+        white: str = Form(...),
+        black: str = Form(...),
+    ) -> HTMLResponse | RedirectResponse:
+        """Запустить партию между выбранными моделями и перенаправить на её страницу.
+
+        Модели резолвятся через каталог (fail-fast при неизвестной модели или
+        отсутствии ключа, ``ConfigError``) — при ошибке форма перерисовывается с
+        сообщением (400). При успехе партия стартует в фоне (``GameManager``), а
+        браузер редиректится (303) на ``/games/{id}`` — её страницу/живой просмотр.
         """
         catalog = _get_catalog(request.app)
-        models = [
-            {
-                "id": model.id,
-                "display_name": model.display_name,
-                "provider": model.provider,
-                "has_key": catalog.has_key(model.id),
+        try:
+            resolved = {
+                "white": catalog.resolve(white),
+                "black": catalog.resolve(black),
             }
-            for model in catalog.models
-        ]
-        return templates.TemplateResponse(
-            request,
-            "new_game.html",
-            {"title": f"{APP_TITLE} — новая партия", "models": models},
+        except ConfigError as exc:
+            return _render_new_game(
+                request, catalog, error=str(exc),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        session = _get_manager(request.app).start(resolved)
+        return RedirectResponse(
+            f"/games/{session.id}", status_code=status.HTTP_303_SEE_OTHER
         )
 
     return app
+
+
+def _render_new_game(
+    request: Request,
+    catalog: ModelCatalog,
+    *,
+    error: str | None = None,
+    status_code: int = 200,
+) -> HTMLResponse:
+    """Отрисовать страницу выбора моделей (``new_game.html``) из каталога.
+
+    ``error`` (опц.) показывается над формой; используется для перерисовки после
+    неудачного ``POST /games`` (например, у выбранной модели нет ключа).
+    """
+    models = [
+        {
+            "id": model.id,
+            "display_name": model.display_name,
+            "provider": model.provider,
+            "has_key": catalog.has_key(model.id),
+        }
+        for model in catalog.models
+    ]
+    templates: Jinja2Templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request,
+        "new_game.html",
+        {"title": f"{APP_TITLE} — новая партия", "models": models, "error": error},
+        status_code=status_code,
+    )
 
 
 def _get_catalog(app: FastAPI) -> ModelCatalog:
@@ -102,6 +154,21 @@ def _get_catalog(app: FastAPI) -> ModelCatalog:
         catalog = ModelCatalog.from_settings(settings)
         app.state.catalog = catalog
     return catalog
+
+
+def _get_manager(app: FastAPI) -> GameManager:
+    """Вернуть планировщик фоновых партий, построив его лениво при первом обращении.
+
+    Без явного ``game_manager`` строит дефолтный ``GameManager`` (реальные игроки,
+    ``games_root`` из ``output.games_dir``). Кэшируется в ``app.state.game_manager``.
+    """
+    manager = getattr(app.state, "game_manager", None)
+    if manager is None:
+        settings = app.state.settings or Settings.load()
+        app.state.settings = settings
+        manager = GameManager(games_root=settings.config.output.games_dir)
+        app.state.game_manager = manager
+    return manager
 
 
 # Готовый экземпляр для ASGI-сервера: ``uvicorn arena.web.app:app``.

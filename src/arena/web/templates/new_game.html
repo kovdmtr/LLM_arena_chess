@@ -3,6 +3,8 @@
 <section class="new-game">
   <h2>Новая партия</h2>
 
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
   {% if models %}
   <form method="post" action="/games" class="game-form">
     {% for side, label in [("white", "Белые"), ("black", "Чёрные")] %}
