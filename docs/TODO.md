@@ -15,7 +15,7 @@
 - [x] `chore: add gitignore and env example` — `.gitignore` (`.env`, `games/`, кэши), `.env.example`.
 - [x] `feat(config): load settings from .env and config.yaml` — `Settings` (pydantic-settings) + `config.yaml` по умолчанию.
 - [x] `feat(config): model catalog` — парсинг `models:`, резолв `api_key_env`, fail-fast при отсутствии ключа.
-- [ ] `test(config): settings and catalog` — юнит-тесты загрузки/валидации.
+- [x] `test(config): settings and catalog` — юнит-тесты загрузки/валидации.
 
 ## Phase 1 — Шахматное ядро
 - [x] `feat(core): board wrapper` — FEN, `legal_moves_san()`, `push()`, `is_game_over()`, `outcome()` + причина окончания.

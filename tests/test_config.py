@@ -3,6 +3,7 @@
 import textwrap
 
 import pytest
+from pydantic import ValidationError
 
 from arena.config import AppConfig, ModelParams, Settings
 from arena.config.settings import DEFAULT_CONFIG_PATH
@@ -126,3 +127,84 @@ def test_settings_load_without_env_file(monkeypatch):
     settings = Settings.load(config_path=DEFAULT_CONFIG_PATH, env_file=None)
     assert isinstance(settings.config, AppConfig)
     assert settings.secrets.by_env_name("OPENAI_API_KEY") is None
+
+
+# --- Краевые случаи загрузки/валидации (test(config): settings and catalog) ---
+
+
+def test_from_yaml_missing_file_raises(tmp_path):
+    """Несуществующий config.yaml → FileNotFoundError, а не молчаливый дефолт."""
+    with pytest.raises(FileNotFoundError):
+        AppConfig.from_yaml(tmp_path / "nope.yaml")
+
+
+def test_empty_config_yields_all_defaults(tmp_path):
+    """Пустой YAML (safe_load → None) даёт полностью дефолтный конфиг без падения."""
+    path = tmp_path / "config.yaml"
+    path.write_text("", encoding="utf-8")
+    cfg = AppConfig.from_yaml(path)
+    assert cfg.arena.illegal_move_retries == 3
+    assert cfg.engine.path == "stockfish"
+    assert cfg.providers == {}
+    assert cfg.models == []
+    assert cfg.output.games_dir == "games"
+
+
+def test_unknown_top_level_section_is_ignored(tmp_path):
+    """Незнакомая секция в config.yaml не ломает загрузку (extra игнорируется)."""
+    path = _write_config(
+        tmp_path,
+        """
+        future_feature: { whatever: 1 }
+        output:
+          games_dir: out
+        """,
+    )
+    cfg = AppConfig.from_yaml(path)
+    assert cfg.output.games_dir == "out"
+
+
+def test_provider_without_api_key_env_raises(tmp_path):
+    """Запись провайдера без обязательного api_key_env → ошибка валидации."""
+    path = _write_config(
+        tmp_path,
+        """
+        providers:
+          openai: {}
+        """,
+    )
+    with pytest.raises(ValidationError):
+        AppConfig.from_yaml(path)
+
+
+def test_model_missing_required_field_raises(tmp_path):
+    """Модель без обязательного поля (display_name) → ошибка валидации."""
+    path = _write_config(
+        tmp_path,
+        """
+        models:
+          - id: gpt-4o
+            provider: openai
+        """,
+    )
+    with pytest.raises(ValidationError):
+        AppConfig.from_yaml(path)
+
+
+def test_env_var_overrides_env_file(tmp_path, monkeypatch):
+    """Переменная окружения имеет приоритет над значением из .env."""
+    for var in ("ANTHROPIC_API_KEY", "GOOGLE_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-from-env")
+    env = tmp_path / ".env"
+    env.write_text("OPENAI_API_KEY=sk-from-file\n", encoding="utf-8")
+    settings = Settings.load(config_path=DEFAULT_CONFIG_PATH, env_file=env)
+    assert settings.secrets.by_env_name("OPENAI_API_KEY") == "sk-from-env"
+
+
+def test_by_env_name_unknown_returns_none(monkeypatch):
+    """Неизвестное имя переменной → None, без исключения."""
+    for var in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
+    settings = Settings.load(config_path=DEFAULT_CONFIG_PATH, env_file=None)
+    assert settings.secrets.by_env_name("NOT_A_REAL_KEY") is None

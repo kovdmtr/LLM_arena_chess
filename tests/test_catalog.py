@@ -116,6 +116,37 @@ def test_duplicate_model_id_rejected():
         ModelCatalog(config, _secrets())
 
 
+def test_resolve_unknown_model_raises():
+    """resolve неизвестной модели падает через get → ConfigError."""
+    catalog = ModelCatalog(_config(), _secrets())
+    with pytest.raises(ConfigError, match="неизвестная модель"):
+        catalog.resolve("does-not-exist")
+
+
+def test_api_key_env_for_unknown_model_raises():
+    """api_key_env_for неизвестной модели → ConfigError."""
+    catalog = ModelCatalog(_config(), _secrets())
+    with pytest.raises(ConfigError, match="неизвестная модель"):
+        catalog.api_key_env_for("does-not-exist")
+
+
+def test_get_on_empty_catalog_reports_empty():
+    """Сообщение об ошибке для пустого каталога перечисляет «<пусто>»."""
+    catalog = ModelCatalog(AppConfig(), _secrets())
+    assert catalog.ids() == []
+    with pytest.raises(ConfigError, match="<пусто>"):
+        catalog.get("anything")
+
+
+def test_key_resolved_from_real_environment(monkeypatch):
+    """Ключ может прийти из переменной окружения, а не только из .env."""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-env")
+    secrets = Secrets(_env_file=None)
+    catalog = ModelCatalog(_config(), secrets)
+    assert catalog.has_key("gpt-4o") is True
+    assert catalog.resolve("gpt-4o").api_key == "sk-env"
+
+
 def test_from_settings_uses_default_catalog(monkeypatch):
     """Каталог из дефолтного config.yaml содержит все объявленные модели."""
     from arena.config import Settings

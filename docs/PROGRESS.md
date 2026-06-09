@@ -16,10 +16,14 @@
   принимал null-move `0000`/`--` без проверки легальности — `parse_move` молча
   возвращал «ход» с SAN `--`. Добавлен guard в `_to_parsed` (отвергает любой
   null-move как «не распознан», покрывает обе ветки SAN/UCI) — см. D-015.
+- **Закрыт хвост Phase 0:** `test(config): settings and catalog` — добавлены краевые
+  тесты загрузки/валидации (settings +7: несуществующий/пустой YAML, незнакомая секция,
+  провайдер без `api_key_env`, модель без обязательного поля, приоритет env над `.env`,
+  неизвестное имя ключа; catalog +4: `resolve`/`api_key_env_for` на неизвестной модели,
+  пустой каталог, ключ из переменной окружения). Phase 0 завершена полностью.
 - **Следующая задача:** `feat(models): pydantic data models` из `docs/TODO.md`
   (Phase 1) — `MoveRecord`, `MessageRecord`, `HintRecord`, `GameRecord`,
   `LLMResponse`, `AnalysisSummary` в `src/arena/models.py`.
-  (Опционально остаётся хвост Phase 0: `test(config): settings and catalog`.)
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -28,7 +32,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 65 passed: config + catalog + board + endgame + move parsing + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 76 passed: config + catalog + board + endgame + move parsing + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -53,3 +57,4 @@
 | 2026-06-09 | `test(core): board and endgame detection`: `tests/test_board_endgame.py` (6 шт) — недостаток материала, 75 ходов, троекратное/пятикратное повторение, поведение `auto_claim_draws`; pytest зелёный (34 passed) | `6bb2225` | `feat(core): move parsing` |
 | 2026-06-09 | `feat(core): move parsing`: `core/move_parsing.py` (`parse_move`/`ParsedMove`/`MoveParseError`) — SAN→UCI, снятие обёртки, причина при неудаче; публичные `Board.san_of/parse_san/parse_uci`; тесты `test_move_parsing.py` (20 шт); pytest зелёный (54 passed) | `c056fba` | `test(core): move parsing` |
 | 2026-06-09 | `test(core): move parsing`: +11 тестов (en passant, регистр UCI, неоднозначность, null-move); guard против null-move `0000`/`--` в `_to_parsed` (D-015); pytest зелёный (65 passed) | `fae4aa2` | `feat(models): pydantic data models` |
+| 2026-06-09 | `test(config): settings and catalog`: +11 краевых тестов загрузки/валидации (settings +7, catalog +4); Phase 0 закрыта; pytest зелёный (76 passed) | _pending_ | `feat(models): pydantic data models` |
