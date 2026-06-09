@@ -9,28 +9,27 @@
 ## Текущее состояние
 
 - **Фаза:** Phase 4 (артефакты) закрыта; **Phase 5 (★ движок: подсказки и анализ)
-  почти закрыта** — осталась только опц. задача LLM-комментария. Phase 0–3 закрыты.
-  Готов `GameRunner` (с протоколом подсказок, D-010), слой `storage`
+  ЗАКРЫТА** (включая опц. LLM-комментарий). Phase 0–3 закрыты. **Phase 6 (★ веб-интерфейс)
+  — следующая.** Готов `GameRunner` (с протоколом подсказок, D-010), слой `storage`
   (`game.json` + `game.pgn` + `report.html`), слой `report` (SVG/опц. PNG +
   Jinja2-отчёт со сводкой ★-анализа), ★ обёртка движка `engine/stockfish.py`
   (`best_move`/`evaluate`, деградация без бинарника) и ★ слой `analysis/`
-  (centipawn-loss классификация + `AnalysisSummary`, D-009). Дальше — опц. LLM-комментарий
-  ключевых моментов, затем Phase 6 (★ веб-интерфейс).
-- **Последняя завершённая задача:** `feat(report): interactive single-board replay` ★ —
-  лента картинок в HTML-отчёте заменена интерактивным плеером (`report.html.j2` + CSS +
-  встроенный JS): одна доска + кадры (стартовая позиция = кадр 0, далее по кадру на ход),
-  навигация ⏮◀▶⏭/слайдер/клавиши (←→/Home/End)/клик по ходу в списке, панель текущего
-  хода (SAN, бейджи классификации/оценки ★, рассуждение, подсказка); ключевые моменты
-  из сводки кликабельны (прыжок на кадр = `ply`). Self-contained (без сети/файлов),
-  `include_boards=False` оставляет навигацию без досок. `template.py` отдаёт SVG
-  стартовой позиции (`start_board`). Тесты `test_report_template.py` (+5, всего 25).
-  До неё — `feat(report): show eval and classification badges` ★ (сводка `AnalysisSummary`
-  в отчёте) и `test(analysis): classification thresholds` ★ (D-009).
-- **Следующая задача:** в Phase 5 осталась только опц.: `feat(analysis): llm commentary
-  of key moments` ★ (опц.) — комментарий ключевых моментов на основе линий движка и
-  рассуждений (заполняет `KeyMoment.comment`, который отчёт уже показывает). Можно
-  пропустить и сразу перейти к Phase 6 — `feat(web): fastapi app skeleton` ★ (архивный
-  просмотр там переиспользует плеер из отчёта, см. ROADMAP).
+  (centipawn-loss классификация + `AnalysisSummary` + LLM-комментарий ключевых
+  моментов, D-009). Дальше — Phase 6 (★ веб-интерфейс).
+- **Последняя завершённая задача:** `feat(analysis): llm commentary of key moments` ★
+  (опц.) — надстройка `analysis/commentary.py` (`comment_key_moments` +
+  `build_commentary_prompt` + Protocol `Commenter`/`BestMoveEngine`): для каждого
+  ключевого момента из `AnalysisSummary` просит LLM один короткий комментарий на основе
+  линий движка (оценка POV белых, опц. лучший ход) и рассуждения самой модели, заполняет
+  `KeyMoment.comment` (отчёт уже показывает). Опц. и мягко деградирует (D-008): нет
+  комментатора / нет `analysis` → no-op; `ProviderError` на моменте → момент пропускается;
+  движок для «лучшего хода» опционален (`EngineUnavailableError` → без этой строки).
+  Секреты в промпт не попадают (D-003). Тесты `test_analysis_commentary.py` (13).
+  До неё — `feat(report): interactive single-board replay` ★ (интерактивный плеер в отчёте).
+- **Следующая задача:** **Phase 6 (★ веб-интерфейс)** — `feat(web): fastapi app skeleton` ★
+  (приложение, static/templates, health), затем `feat(web): model selection page` ★
+  (каталог моделей, форма выбора белых/чёрных). Архивный просмотр там переиспользует
+  плеер из отчёта (см. ROADMAP).
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -39,7 +38,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 386 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template (вкл. сводку ★-анализа + интерактивный плеер) + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 399 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template (вкл. сводку ★-анализа + интерактивный плеер) + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + analysis commentary ★ + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -100,3 +99,4 @@
 | 2026-06-09 | `test(analysis): classification thresholds` ★ (D-009): `test_analysis_classify.py` (18) — параметризованные границы `classify_cpl` (на пороге/на 1 ниже/0/отрицательный clamp/большой), запрет эвристических классов, конфигурируемость и «схлопывание» среднего класса, валидация порогов (возрастание/неотрицательность), `from_config` + согласование с дефолтным `config.yaml`; pytest зелёный (376 passed, 1 skipped) | `84ffa95` | `feat(report): show eval and classification badges` ★ / Phase 6 |
 | 2026-06-09 | `feat(report): show eval and classification badges` ★: блок сводки ★-анализа в `report.html.j2` (+CSS) — точность (% / «—») и счётчики зевков/ошибок/неточностей по сторонам из `AnalysisSummary`, список ключевых моментов (номер хода + бейдж + опц. комментарий, экранируется); per-move бейджи уже были; docstring `template.py`; тесты `test_report_template.py` (+5, всего 20); pytest зелёный (381 passed, 1 skipped) | `468237b` | `feat(analysis): llm commentary` ★ (опц.) / Phase 6 |
 | 2026-06-09 | `feat(report): interactive single-board replay` ★: лента картинок → интерактивный плеер (одна доска + кадры, навигация ⏮◀▶⏭/слайдер/клавиши/клик по ходу, панель текущего хода, кликабельные ключевые моменты); self-contained (встроенный JS), `include_boards=False` оставляет навигацию без досок; `template.py` отдаёт `start_board`; ROADMAP: Phase 6 переиспользует плеер; тесты (+5, всего 25); pytest зелёный (386 passed, 1 skipped) | `0ab186e` | `feat(analysis): llm commentary` ★ (опц.) / Phase 6 |
+| 2026-06-09 | `feat(analysis): llm commentary of key moments` ★ (опц.): `analysis/commentary.py` (`comment_key_moments`/`build_commentary_prompt` + Protocol `Commenter`/`BestMoveEngine`) — LLM-комментарий каждого ключевого момента из линий движка (оценка POV белых, опц. лучший ход) + рассуждения модели, заполняет `KeyMoment.comment`; мягкая деградация (нет комментатора/analysis → no-op, `ProviderError` → пропуск момента, движок опц.), без секретов в промпте (D-003); **Phase 5 закрыта**; тесты `test_analysis_commentary.py` (13); pytest зелёный (399 passed, 1 skipped) | _pending_ | `feat(web): fastapi app skeleton` ★ (Phase 6) |
