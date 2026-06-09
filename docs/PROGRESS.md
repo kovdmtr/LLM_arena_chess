@@ -8,24 +8,19 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 3 — Игровой цикл (почти закрыта). Phase 0–2 закрыты. Готов
-  `GameRunner` целиком (happy path, ретрай/техпоражение D-006, финализация
-  result/termination и resign D-020) и слой `storage` для `game.json`. Остался
-  последний пункт Phase 3 — `test(arena): e2e with fake players`.
-- **Последняя завершённая задача:** `feat(storage): persist and load game.json`
-  (D-004/D-003) — `src/arena/storage/game_store.py`: `save_game` пишет `GameRecord`
-  в `games/<id>/game.json` (атомарно через `.tmp` + `replace`, создаёт папку),
-  `load_game` читает из файла **или** из папки партии, `game_dir` строит путь.
-  `_validate_game_id` защищает от обхода каталога (пустой id, `.`/`..`, разделители
-  пути отклоняются с `StorageError`). Секретов в `GameRecord` нет по построению
-  моделей (D-003) — отдельной фильтрации не нужно. Экспорт из `arena.storage`.
-  Тесты `tests/test_storage_game_store.py` (18 шт: round-trip, файл/папка, создание
-  родителей, перезапись, без `.tmp`-остатков, валидация id в `game_dir` и из
-  `record.id`, missing/битый JSON/несоответствие схемы → `StorageError`, отсутствие
-  `api_key` в `game.json`).
-- **Следующая задача:** `test(arena): e2e with fake players` из `docs/TODO.md`
-  (Phase 3) — детерминированные игроки доигрывают партию, сохранение через
-  `storage.save_game`, проверка содержимого `game.json`. Закрывает Phase 3.
+- **Фаза:** **Phase 3 закрыта.** Phase 0–2 закрыты. Готов `GameRunner` целиком
+  (happy path, ретрай/техпоражение D-006, финализация result/termination и resign
+  D-020), слой `storage` для `game.json` и сквозной e2e-тест. Дальше — Phase 4
+  (артефакты): экспорт PGN, рендер доски, HTML-отчёт.
+- **Последняя завершённая задача:** `test(arena): e2e with fake players` —
+  `tests/test_arena_e2e.py` (6 шт): фейковые игроки (`_FakePlayer`) доигрывают мат
+  Шольяра до `checkmate`/`1-0`, `storage.save_game` пишет `games/<id>/game.json`,
+  `load_game` читает обратно — точный round-trip; проверка детали хода (uci/reasoning/
+  FEN-цепочка), сборка валидного PGN из загруженной записи (`build_pgn`), путь файла,
+  отсутствие секретов (D-003). Сквозная цепочка партия → диск → чтение → совпадение.
+- **Следующая задача:** `feat(storage): export game.pgn` из `docs/TODO.md`
+  (Phase 4) — экспорт `game.pgn` из `GameRecord` через `core.pgn.build_pgn`
+  (в папку партии `games/<id>/`). Затем `test(storage): pgn opens as valid game`.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -34,7 +29,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 273 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 279 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + arena runner + prompts system + prompts context (+ fixtures) + storage game store + arena e2e + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -76,3 +71,4 @@
 | 2026-06-09 | `feat(arena): illegal move retry and technical loss`: цикл ретраев в `_play_turn` (D-006) — нелегальный ход → `IllegalAttempt` + коррекция `context(retry=...)` + повтор; счётчик локален ходу, `illegal_move_retries` подряд → `_technical_loss` (result+`termination=technical_loss`); попытки в `MoveRecord.illegal_attempts`; событие `EVENT_ILLEGAL`, `EVENT_GAME_OVER` несёт result/termination; тесты `test_arena_runner.py` (17 шт); pytest зелёный (249 passed) | `22a6505` | `feat(arena): game end and result/termination` |
 | 2026-06-09 | `feat(arena): game end and result/termination` (D-020): `_finalize` ставит result/termination из `Board.outcome()` для обычных окончаний (не перезаписывая техисходы), повторение → `repetition`; `resign` → `_resign` (termination=resign, победа соперника) вместо шва `GameRunnerError`; `max_plies` оставляет `"*"`; D-020 в DECISIONS; тесты `test_arena_runner.py` (23 шт); **Phase 3 — остался storage**; pytest зелёный (255 passed) | `684e3c9` | `feat(storage): persist and load game.json` |
 | 2026-06-09 | `feat(storage): persist and load game.json` (D-004/D-003): `storage/game_store.py` — `save_game` (атомарная запись `games/<id>/game.json`, mkdir), `load_game` (из файла/папки), `game_dir`, `_validate_game_id` (анти-traversal), `StorageError`; экспорт из `arena.storage`; тесты `test_storage_game_store.py` (18 шт); **Phase 3 — остался e2e-тест**; pytest зелёный (273 passed) | `2459237` | `test(arena): e2e with fake players` |
+| 2026-06-09 | `test(arena): e2e with fake players`: `test_arena_e2e.py` (6 шт) — фейковые игроки доигрывают мат Шольяра, `save_game`→`load_game` round-trip, детали ходов, сборка PGN из загруженной записи, путь файла, без секретов; **Phase 3 закрыта**; pytest зелёный (279 passed) | `_pending_` | `feat(storage): export game.pgn` |

@@ -42,7 +42,7 @@
 - [x] `feat(arena): illegal move retry and technical loss` — коррекция, счётчик, 3-strike → `technical_loss`.
 - [x] `feat(arena): game end and result/termination` — проставление `result`/`termination`, обработка `resign`.
 - [x] `feat(storage): persist and load game.json` — папка партии, запись/чтение, без секретов.
-- [ ] `test(arena): e2e with fake players` — детерминированные игроки доигрывают партию, проверка `game.json`.
+- [x] `test(arena): e2e with fake players` — детерминированные игроки доигрывают партию, проверка `game.json`.
 
 ## Phase 4 — Артефакты
 - [ ] `feat(storage): export game.pgn` — из `GameRecord` через `core.pgn`.
