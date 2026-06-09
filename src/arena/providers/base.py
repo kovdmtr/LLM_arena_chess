@@ -22,6 +22,7 @@ from typing import TypeVar
 from arena.config import ResolvedModel
 from arena.config.settings import ModelParams, RetryConfig
 from arena.models import MessageRecord
+from arena.obs import register_secret
 from arena.providers.retry import call_with_retry
 
 
@@ -65,6 +66,9 @@ class LLMProvider(ABC):
         # дефолтная (3 попытки, экспоненциальный backoff); вызывающий может задать
         # свою из ``config.yaml`` через ``create_provider(retry=...)``.
         self.retry = retry if retry is not None else RetryConfig()
+        # Сквозная защита от утечки ключа в логи (D-003): регистрируем ключ модели
+        # в реестре маскирования — где бы он ни всплыл в выводе, его вырежет obs.
+        register_secret(model.api_key)
 
     def _call(self, fn: "Callable[[], object]") -> object:
         """Выполнить SDK-вызов ``fn`` с повторами по ``self.retry``.

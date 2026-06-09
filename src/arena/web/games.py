@@ -28,6 +28,7 @@ from pathlib import Path
 from arena.arena import GameEvent, GameRunner, ModelPlayer, new_game_record
 from arena.config import ResolvedModel
 from arena.models import GameRecord, PlayerInfo, Side
+from arena.obs import get_logger
 from arena.providers import create_provider
 from arena.storage import (
     DEFAULT_GAMES_ROOT,
@@ -39,6 +40,8 @@ from arena.storage import (
     load_game,
     save_game,
 )
+
+_log = get_logger("web")
 
 # Статусы фоновой партии.
 STATUS_RUNNING = "running"
@@ -171,6 +174,14 @@ class GameManager:
         )
         with self._lock:
             self._sessions[game_id] = session
+        _log.info(
+            "game started",
+            extra={
+                "game_id": game_id,
+                "white": record.players["white"].model_id,
+                "black": record.players["black"].model_id,
+            },
+        )
         thread = threading.Thread(
             target=self._run, args=(session, players, record), daemon=True
         )
@@ -250,8 +261,20 @@ class GameManager:
                 export_pgn(record, games_root=self._games_root)
                 export_report(record, games_root=self._games_root)
             session.status = STATUS_FINISHED
+            _log.info(
+                "game finished",
+                extra={
+                    "game_id": session.id,
+                    "result": record.result,
+                    "termination": record.termination,
+                },
+            )
         except Exception as exc:  # noqa: BLE001 — любой сбой партии виден в сессии
             session.status = STATUS_ERROR
             session.error = str(exc)
+            # exc_info=True кладёт трейсбек; форматтер замаскирует возможный ключ (D-003).
+            _log.error(
+                "game failed", extra={"game_id": session.id}, exc_info=True
+            )
         finally:
             session._done.set()

@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from arena.config import ConfigError, ModelCatalog, Settings
+from arena.obs import register_secrets
 from arena.providers import ProviderError
 from arena.report import render_report_html
 from arena.web.games import GameManager
@@ -188,6 +189,27 @@ def _render_new_game(
     )
 
 
+def _ensure_settings(app: FastAPI) -> Settings:
+    """Вернуть ``Settings`` приложения, загрузив их лениво при первом обращении.
+
+    Помимо кэширования в ``app.state.settings`` регистрирует значения секретов
+    (API-ключи провайдеров) в реестре маскирования логов (D-003) — чтобы ключ не
+    утёк в вывод, даже если всплывёт в сообщении/трейсбеке.
+    """
+    settings = getattr(app.state, "settings", None)
+    if settings is None:
+        settings = Settings.load()
+        app.state.settings = settings
+    register_secrets(
+        [
+            settings.secrets.openai_api_key,
+            settings.secrets.anthropic_api_key,
+            settings.secrets.google_api_key,
+        ]
+    )
+    return settings
+
+
 def _get_catalog(app: FastAPI) -> ModelCatalog:
     """Вернуть каталог моделей приложения, построив его лениво при первом обращении.
 
@@ -197,9 +219,7 @@ def _get_catalog(app: FastAPI) -> ModelCatalog:
     """
     catalog = getattr(app.state, "catalog", None)
     if catalog is None:
-        settings = app.state.settings or Settings.load()
-        app.state.settings = settings
-        catalog = ModelCatalog.from_settings(settings)
+        catalog = ModelCatalog.from_settings(_ensure_settings(app))
         app.state.catalog = catalog
     return catalog
 
@@ -212,8 +232,7 @@ def _get_manager(app: FastAPI) -> GameManager:
     """
     manager = getattr(app.state, "game_manager", None)
     if manager is None:
-        settings = app.state.settings or Settings.load()
-        app.state.settings = settings
+        settings = _ensure_settings(app)
         manager = GameManager(games_root=settings.config.output.games_dir)
         app.state.game_manager = manager
     return manager
