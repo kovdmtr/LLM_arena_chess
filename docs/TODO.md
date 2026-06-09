@@ -51,6 +51,7 @@
 - [x] `feat(report): html report template` — Jinja2: шапка, ходы, доски, рассуждения, итог.
 - [x] `feat(report): render report from game.json` — генерация self-contained `report.html`.
 - [x] `test(report): report renders from fixture` — smoke-тест рендера.
+- [x] `feat(report): interactive single-board replay` ★ — одна доска + перемотка ходов (⏮◀▶⏭, слайдер, клавиши, клик по ходу) вместо ленты картинок; self-contained (встроенный JS). Логику переиспользует Phase 6 для веб-просмотра.
 
 ## Phase 5 — ★ Движок: подсказки и анализ
 - [x] `feat(engine): stockfish wrapper` ★ — `best_move`, `evaluate`, корректная деградация без бинарника.

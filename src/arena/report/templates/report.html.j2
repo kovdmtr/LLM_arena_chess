@@ -65,6 +65,39 @@
     .reasoning.empty { color: #a8a29e; font-style: italic; }
     .hint { margin-top: .5rem; font-size: .85rem; color: #0369a1; }
     .eval { color: #57534e; font-size: .85rem; }
+    /* --- интерактивный плеер: одна доска + перемотка ходов --- */
+    .replay-stage { display: flex; gap: 1.25rem; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+    .replay-boards { width: {{ board_size }}px; max-width: 100%; }
+    .replay-boards .frame-board { display: none; }
+    .replay-boards .frame-board.is-active { display: block; }
+    .replay-boards svg { width: 100%; height: auto; display: block; }
+    .replay-side { flex: 1; min-width: 240px; max-width: 460px; }
+    .replay-detail { display: none; background: #fff; border: 1px solid #e7e5e4; border-radius: .5rem; padding: 1rem; }
+    .replay-detail.is-active { display: block; }
+    .replay-detail .headline { font-weight: 600; }
+    .replay-detail .num { color: #78716c; }
+    .replay-detail .side-tag { color: #78716c; font-weight: 400; }
+    .replay-controls { display: flex; gap: .5rem; align-items: center; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
+    .replay-controls button {
+      font: inherit; cursor: pointer; border: 1px solid #d6d3d1; background: #fff;
+      border-radius: .375rem; padding: .3rem .7rem; line-height: 1;
+    }
+    .replay-controls button:hover { background: #f5f5f4; }
+    .replay-slider { flex: 1; min-width: 140px; max-width: 360px; }
+    .replay-counter { font-variant-numeric: tabular-nums; color: #57534e; font-size: .85rem; min-width: 4rem; text-align: center; }
+    ol.replay-moves {
+      list-style: none; padding: 0; margin: 1rem auto 0; max-width: 720px;
+      display: flex; flex-wrap: wrap; gap: .3rem;
+    }
+    ol.replay-moves li {
+      cursor: pointer; border: 1px solid #e7e5e4; background: #fff; border-radius: .375rem;
+      padding: .25rem .5rem; font-size: .9rem;
+    }
+    ol.replay-moves li:hover { background: #f5f5f4; }
+    ol.replay-moves li.is-current { background: #1c1917; color: #fafaf9; border-color: #1c1917; }
+    ol.replay-moves li.is-current .num { color: #d6d3d1; }
+    .key-moments li[data-frame] { cursor: pointer; }
+    .key-moments li[data-frame]:hover { background: #f5f5f4; }
     footer { text-align: center; color: #a8a29e; font-size: .8rem; margin-top: 2rem; }
   </style>
 </head>
@@ -110,7 +143,7 @@
     {% if game.analysis.key_moments %}
     <ul class="key-moments">
       {% for km in game.analysis.key_moments %}
-      <li>
+      <li data-frame="{{ km.ply }}">
         <span class="num">{{ (km.ply + 1) // 2 }}{% if km.ply % 2 == 1 %}.{% else %}...{% endif %}</span>
         <span class="badge {{ km.classification }}">{{ km.classification }}</span>
         {% if km.comment %}<span class="comment">{{ km.comment }}</span>{% endif %}
@@ -122,30 +155,121 @@
   {% endif %}
 
   {% if moves %}
-  <ol class="moves">
-    {% for m in moves %}
-    <li class="move{% if not m.board_svg %} no-board{% endif %}">
-      {% if m.board_svg %}<div class="board">{{ m.board_svg }}</div>{% endif %}
-      <div class="move-body">
-        <div class="headline">
-          <span class="num">{{ m.move_number }}{% if m.record.side == "white" %}.{% else %}...{% endif %}</span>
-          {{ m.record.san }}
-          <span class="side-tag">({{ m.record.side }})</span>
-          {% if m.record.classification %}<span class="badge {{ m.record.classification }}">{{ m.record.classification }}</span>{% endif %}
-          {% if m.record.engine_eval_cp is not none %}<span class="eval">{{ "%+d"|format(m.record.engine_eval_cp) }} cp</span>{% endif %}
-        </div>
-        {% if m.record.reasoning %}
-        <p class="reasoning">{{ m.record.reasoning }}</p>
-        {% else %}
-        <p class="reasoning empty">(без объяснения)</p>
-        {% endif %}
-        {% if m.record.hint %}
-        <div class="hint">Подсказка движка: {{ m.record.hint.best_move }}{% if m.record.hint.eval_cp is not none %} ({{ "%+d"|format(m.record.hint.eval_cp) }} cp){% endif %}</div>
-        {% endif %}
+  <section class="replay" id="replay" data-total="{{ moves|length }}">
+    <div class="replay-stage">
+      {% if start_board %}
+      <div class="replay-boards">
+        <div class="frame-board is-active" data-frame="0">{{ start_board }}</div>
+        {% for m in moves %}
+        <div class="frame-board" data-frame="{{ loop.index }}">{{ m.board_svg }}</div>
+        {% endfor %}
       </div>
-    </li>
-    {% endfor %}
-  </ol>
+      {% endif %}
+      <div class="replay-side">
+        <div class="replay-detail is-active" data-frame="0">
+          <div class="headline">Начальная позиция</div>
+        </div>
+        {% for m in moves %}
+        <div class="replay-detail" data-frame="{{ loop.index }}">
+          <div class="headline">
+            <span class="num">{{ m.move_number }}{% if m.record.side == "white" %}.{% else %}...{% endif %}</span>
+            {{ m.record.san }}
+            <span class="side-tag">({{ m.record.side }})</span>
+            {% if m.record.classification %}<span class="badge {{ m.record.classification }}">{{ m.record.classification }}</span>{% endif %}
+            {% if m.record.engine_eval_cp is not none %}<span class="eval">{{ "%+d"|format(m.record.engine_eval_cp) }} cp</span>{% endif %}
+          </div>
+          {% if m.record.reasoning %}
+          <p class="reasoning">{{ m.record.reasoning }}</p>
+          {% else %}
+          <p class="reasoning empty">(без объяснения)</p>
+          {% endif %}
+          {% if m.record.hint %}
+          <div class="hint">Подсказка движка: {{ m.record.hint.best_move }}{% if m.record.hint.eval_cp is not none %} ({{ "%+d"|format(m.record.hint.eval_cp) }} cp){% endif %}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="replay-controls">
+      <button type="button" data-nav="first" title="К началу (Home)">⏮</button>
+      <button type="button" data-nav="prev" title="Назад (←)">◀</button>
+      <input class="replay-slider" type="range" min="0" max="{{ moves|length }}" value="0" aria-label="Перемотка ходов">
+      <button type="button" data-nav="next" title="Вперёд (→)">▶</button>
+      <button type="button" data-nav="last" title="К концу (End)">⏭</button>
+      <span class="replay-counter">0 / {{ moves|length }}</span>
+    </div>
+
+    <ol class="replay-moves">
+      {% for m in moves %}
+      <li data-frame="{{ loop.index }}">
+        <span class="num">{{ m.move_number }}{% if m.record.side == "white" %}.{% else %}...{% endif %}</span>
+        {{ m.record.san }}
+        {% if m.record.classification %}<span class="badge {{ m.record.classification }}">{{ m.record.classification }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+
+    <script>
+    (function () {
+      var root = document.getElementById("replay");
+      if (!root) return;
+      var total = parseInt(root.dataset.total, 10) || 0;
+      var slider = root.querySelector(".replay-slider");
+      var counter = root.querySelector(".replay-counter");
+      var boards = root.querySelectorAll(".frame-board");
+      var details = root.querySelectorAll(".replay-detail");
+      var items = root.querySelectorAll(".replay-moves li");
+      // Ключевые моменты живут в блоке анализа над плеером — тоже навигируют.
+      var keyMoments = document.querySelectorAll(".key-moments li[data-frame]");
+      var current = -1;
+
+      function setActive(nodes, frame) {
+        for (var i = 0; i < nodes.length; i++) {
+          var f = parseInt(nodes[i].dataset.frame, 10);
+          nodes[i].classList.toggle("is-active", f === frame);
+          nodes[i].classList.toggle("is-current", f === frame);
+        }
+      }
+
+      function show(frame) {
+        frame = Math.max(0, Math.min(total, frame));
+        if (frame === current) return;
+        current = frame;
+        setActive(boards, frame);
+        setActive(details, frame);
+        setActive(items, frame);
+        if (slider) slider.value = frame;
+        if (counter) counter.textContent = frame + " / " + total;
+      }
+
+      root.querySelectorAll("[data-nav]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var nav = btn.dataset.nav;
+          if (nav === "first") show(0);
+          else if (nav === "prev") show(current - 1);
+          else if (nav === "next") show(current + 1);
+          else if (nav === "last") show(total);
+        });
+      });
+      if (slider) slider.addEventListener("input", function () { show(parseInt(slider.value, 10)); });
+      items.forEach(function (el) {
+        el.addEventListener("click", function () { show(parseInt(el.dataset.frame, 10)); });
+      });
+      keyMoments.forEach(function (el) {
+        el.addEventListener("click", function () { show(parseInt(el.dataset.frame, 10)); });
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowLeft") { show(current - 1); e.preventDefault(); }
+        else if (e.key === "ArrowRight") { show(current + 1); e.preventDefault(); }
+        else if (e.key === "Home") { show(0); e.preventDefault(); }
+        else if (e.key === "End") { show(total); e.preventDefault(); }
+      });
+
+      show(0);
+    })();
+    </script>
+  </section>
   {% else %}
   <p>В партии нет ходов.</p>
   {% endif %}

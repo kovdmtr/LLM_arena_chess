@@ -112,8 +112,8 @@ def test_report_marks_empty_reasoning():
 def test_report_embeds_board_svgs_by_default():
     html = render_report_html(_game())
     assert "<svg" in html
-    # По одной доске на ход.
-    assert html.count("<svg") == len(_SCHOLARS_MATE)
+    # По одной доске на ход + стартовая позиция (кадр 0 плеера).
+    assert html.count("<svg") == len(_SCHOLARS_MATE) + 1
 
 
 def test_report_can_omit_boards():
@@ -121,6 +121,59 @@ def test_report_can_omit_boards():
     assert "<svg" not in html
     # Ходы при этом всё равно перечислены.
     assert "Qxf7#" in html
+
+
+# --- интерактивный плеер (одна доска + перемотка ходов) ---------------------
+
+
+def test_report_renders_replay_player():
+    html = render_report_html(_game())
+    # Контейнер плеера и элементы навигации.
+    assert 'id="replay"' in html
+    assert 'data-nav="first"' in html
+    assert 'data-nav="prev"' in html
+    assert 'data-nav="next"' in html
+    assert 'data-nav="last"' in html
+    assert 'class="replay-slider"' in html
+    # Встроенный JS навигации (self-contained, без сети).
+    assert "function show(frame)" in html
+
+
+def test_report_player_has_start_frame_and_one_board_per_move():
+    html = render_report_html(_game())
+    # Кадр 0 — стартовая позиция, далее по кадру на каждый ход.
+    assert 'data-frame="0"' in html
+    assert html.count('class="frame-board') == len(_SCHOLARS_MATE) + 1
+    # Слайдер охватывает все ходы (max = число полуходов).
+    assert 'max="{}"'.format(len(_SCHOLARS_MATE)) in html
+
+
+def test_report_player_move_list_is_navigable():
+    html = render_report_html(_game(["e4", "e5"]))
+    # Список ходов — кликабельные кадры (data-frame на каждом ходе).
+    assert 'class="replay-moves"' in html
+    assert 'data-frame="1"' in html
+    assert 'data-frame="2"' in html
+
+
+def test_report_player_without_boards_keeps_navigation():
+    html = render_report_html(_game(["e4", "e5"]), include_boards=False)
+    # Без досок плеер всё равно перематывает ходы (детали + список), но без SVG.
+    assert "<svg" not in html
+    assert 'class="frame-board' not in html
+    assert 'class="replay-moves"' in html
+    assert 'data-nav="next"' in html
+
+
+def test_report_key_moments_are_clickable_frames():
+    game = _game(["e4", "e5", "Bc4"])
+    game.analysis = AnalysisSummary(
+        key_moments=[KeyMoment(ply=2, classification="blunder")]
+    )
+    html = render_report_html(game)
+    # Ключевой момент несёт data-frame=ply → клик прыгает на этот кадр.
+    assert 'class="key-moments"' in html
+    assert 'data-frame="2"' in html
 
 
 # --- бейджи ★ (классификация / оценка) появляются только при наличии --------

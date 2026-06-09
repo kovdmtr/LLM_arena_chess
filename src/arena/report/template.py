@@ -2,10 +2,11 @@
 
 Отчёт — производный артефакт из ``game.json`` (D-004): шапка (игроки/итог),
 сводка пост-анализа (★ ``AnalysisSummary``: точность и счётчики ошибок по сторонам
-+ ключевые моменты, если заполнена), лента ходов с картинками доски (inline SVG,
-``board_image``), рассуждения моделей и бейджи классификации/оценки (★, если
-заполнены пост-анализом). HTML самодостаточен — доски встроены как SVG, внешних
-файлов нет.
++ ключевые моменты, если заполнена), интерактивный плеер партии (одна доска +
+перемотка ходов: кнопки/слайдер/клавиши/клик по ходу) с панелью текущего хода
+(рассуждение, бейджи классификации/оценки ★, подсказка). Доски — inline SVG
+(``board_image``), навигация — встроенным JS, поэтому HTML самодостаточен (внешних
+файлов и сети нет).
 
 Публичное:
 
@@ -21,7 +22,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from markupsafe import Markup
 
 from arena.models import GameRecord
-from arena.report.board_image import DEFAULT_SIZE, render_move_svg
+from arena.report.board_image import DEFAULT_SIZE, render_board_svg, render_move_svg
 
 # Имя шаблона отчёта внутри ``templates/``.
 _TEMPLATE_NAME = "report.html.j2"
@@ -79,6 +80,16 @@ def render_report_html(
     Сводка анализа, а также бейджи классификации и оценки появляются только если
     заполнены пост-анализом (``game.analysis`` / поля ``MoveRecord``).
     """
+    # Стартовая позиция — кадр 0 плеера (одна доска + перемотка ходов). Берём FEN
+    # до первого хода, чтобы доска совпадала с записью; без ходов плеера нет.
+    start_board = None
+    if include_boards and game.moves:
+        start_board = Markup(
+            render_board_svg(
+                game.moves[0].fen_before, size=board_size, orientation=orientation
+            )
+        )
+
     template = _ENV.get_template(_TEMPLATE_NAME)
     return template.render(
         game=game,
@@ -93,5 +104,6 @@ def render_report_html(
             board_size=board_size,
             orientation=orientation,
         ),
+        start_board=start_board,
         board_size=board_size,
     )
