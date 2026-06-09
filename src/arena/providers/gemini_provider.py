@@ -72,11 +72,13 @@ class GeminiProvider(LLMProvider):
             if m.role != "system"
         ]
 
-        config = types.GenerateContentConfig(
-            temperature=params.temperature,
-            max_output_tokens=params.max_tokens,
-            system_instruction=system_text or None,
-        )
+        config_kwargs: dict = {
+            "max_output_tokens": params.max_tokens,
+            "system_instruction": system_text or None,
+        }
+        if params.temperature is not None:  # None → не передаём (см. ModelParams)
+            config_kwargs["temperature"] = params.temperature
+        config = types.GenerateContentConfig(**config_kwargs)
 
         try:
             response = client.models.generate_content(

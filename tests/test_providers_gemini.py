@@ -115,6 +115,18 @@ def test_complete_returns_text_and_passes_params(monkeypatch):
     ]
 
 
+def test_complete_omits_temperature_when_none(monkeypatch):
+    captured: dict = {}
+    _install_fake(monkeypatch, captured, response=_response("ok"))
+    provider = GeminiProvider(_model())
+
+    provider.complete(_msgs(), ModelParams(temperature=None, max_tokens=42))
+
+    config = captured["gen_kwargs"]["config"]
+    assert config.temperature is None  # None → параметр не передаётся в config
+    assert config.max_output_tokens == 42
+
+
 def test_assistant_role_mapped_to_model(monkeypatch):
     captured: dict = {}
     _install_fake(monkeypatch, captured, response=_response("ok"))
