@@ -8,24 +8,27 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 2 — Провайдеры LLM. Базовый интерфейс, фабрика и первая
-  реализация (OpenAI) готовы; дальше anthropic и gemini.
-- **Последняя завершённая задача:** `feat(providers): openai` —
-  `providers/openai_provider.py`: `OpenAIProvider(LLMProvider)` поверх SDK `openai`
-  (Chat Completions). `complete` транслирует `MessageRecord`→`{"role","content"}` и
-  `ModelParams` (temperature/max_tokens) в `client.chat.completions.create`, имя
-  модели берётся из `ResolvedModel.id` (в каталоге `id` == имя модели API). Клиент
-  `openai.OpenAI(api_key=...)` создаётся **лениво и кэшируется**. Ошибки SDK
-  оборачиваются в `ProviderError`; ключ маскируется новой утилитой `mask_secret`
-  (добавлена в `base.py`, экспортирована — переиспользуют anthropic/gemini).
-  Пустой `content=None` и неожиданная форма ответа → `ProviderError`. Регистрация
-  через `@register_provider("openai")`; импорт реализации в `providers/__init__`
-  выполняет регистрацию для фабрики. Тесты `test_providers_openai.py` (8 шт, мок
-  `openai.OpenAI`: трансляция параметров, ленивое кэширование клиента, обёртка
-  ошибок + маскирование ключа, `repr` без ключа).
-- **Следующая задача:** `feat(providers): anthropic` из `docs/TODO.md` (Phase 2) —
-  реализация поверх `anthropic` SDK (+ prompt caching статичной части),
-  регистрация через `register_provider("anthropic")`, переиспользовать `mask_secret`.
+- **Фаза:** Phase 2 — Провайдеры LLM. Базовый интерфейс, фабрика, OpenAI и
+  Anthropic готовы; дальше gemini.
+- **Последняя завершённая задача:** `feat(providers): anthropic` —
+  `providers/anthropic_provider.py`: `AnthropicProvider(LLMProvider)` поверх SDK
+  `anthropic` (Messages API). `complete` выносит system-реплики из `messages` в
+  отдельный параметр `system` (Messages API в `messages` принимает только
+  `user`/`assistant`), объединяя их через `\n\n`, и помечает системный префикс
+  `cache_control: ephemeral` — prompt caching статичной части (D-017). Остальной
+  диалог транслируется в `client.messages.create` вместе с `max_tokens`/`temperature`
+  из `ModelParams`; имя модели — `ResolvedModel.id`. Ответ собирается как
+  конкатенация текста всех `text`-блоков `response.content`; пустой набор → ошибка.
+  Клиент `anthropic.Anthropic(api_key=...)` создаётся **лениво и кэшируется**, ошибки
+  SDK оборачиваются в `ProviderError` с маскированием ключа через `mask_secret`.
+  Регистрация `@register_provider("anthropic")` + импорт в `providers/__init__`.
+  Тесты `test_providers_anthropic.py` (12 шт, мок `anthropic.Anthropic`: вынос/слияние
+  system + cache_control, отсутствие `system` без system-реплик, конкатенация
+  блоков, трансляция параметров, ленивое кэширование, обёртка ошибок + маскирование,
+  пустой/битый ответ, `repr` без ключа).
+- **Следующая задача:** `feat(providers): gemini` из `docs/TODO.md` (Phase 2) —
+  реализация поверх `google-genai` SDK, регистрация через
+  `register_provider("gemini")`, переиспользовать `mask_secret`.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -34,7 +37,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 131 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 143 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -65,3 +68,4 @@
 | 2026-06-09 | `test(core): pgn export`: `tests/test_pgn_export.py` (13 шт) — полная партия (детский мат) с round-trip, STR в каноническом порядке, рокировка/en passant/превращение, токены результата, override тегов, Unicode, без секретов; **Phase 1 закрыта**; pytest зелёный (113 passed) | `f2c2c04` | `feat(providers): base interface and factory` |
 | 2026-06-09 | `feat(providers): base interface and factory`: `providers/base.py` (`LLMProvider.complete`, `ProviderError`, реестр + `register_provider`/`create_provider`); фабрика по имени, fail-fast, ключ не в `repr`; экспорт из `arena.providers`; тесты `test_providers_base.py` (10 шт); pytest зелёный (123 passed) | `c758e68` | `feat(providers): openai` |
 | 2026-06-09 | `feat(providers): openai`: `providers/openai_provider.py` (`OpenAIProvider` поверх SDK `openai`, Chat Completions); ленивое кэширование клиента, обёртка ошибок SDK в `ProviderError`, утилита `mask_secret` в `base.py` (маскирование ключа); регистрация через `@register_provider("openai")` + импорт в `__init__`; тесты `test_providers_openai.py` (8 шт на моках); pytest зелёный (131 passed) | `fd70e0e` | `feat(providers): anthropic` |
+| 2026-06-09 | `feat(providers): anthropic`: `providers/anthropic_provider.py` (`AnthropicProvider` поверх SDK `anthropic`, Messages API); system вынесен из `messages` в параметр `system` с `cache_control: ephemeral` (prompt caching, D-017), конкатенация text-блоков ответа, ленивое кэширование клиента, обёртка ошибок + `mask_secret`; регистрация `@register_provider("anthropic")` + импорт в `__init__`; тесты `test_providers_anthropic.py` (12 шт на моках); D-017 в DECISIONS; pytest зелёный (143 passed) | _pending_ | `feat(providers): gemini` |

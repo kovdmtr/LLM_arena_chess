@@ -29,7 +29,7 @@
 ## Phase 2 — Провайдеры LLM
 - [x] `feat(providers): base interface and factory` — `LLMProvider.complete()`, фабрика по имени.
 - [x] `feat(providers): openai` — реализация + маскирование ключа.
-- [ ] `feat(providers): anthropic` — реализация (+ prompt caching статичной части).
+- [x] `feat(providers): anthropic` — реализация (+ prompt caching статичной части).
 - [ ] `feat(providers): gemini` — реализация.
 - [ ] `test(providers): mocked transport` — парсинг ответов, обработка ошибок на моках.
 - [ ] `feat(arena): model player` — `ModelPlayer` поверх провайдера, возвращает `LLMResponse`.

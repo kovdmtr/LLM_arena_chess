@@ -15,11 +15,13 @@ from arena.providers.base import (
 )
 
 # Импорт реализаций регистрирует их в реестре (фабрика по имени провайдера).
+from arena.providers.anthropic_provider import AnthropicProvider
 from arena.providers.openai_provider import OpenAIProvider
 
 __all__ = [
     "LLMProvider",
     "ProviderError",
+    "AnthropicProvider",
     "OpenAIProvider",
     "create_provider",
     "mask_secret",
