@@ -22,7 +22,7 @@
 - [x] `test(core): board and endgame detection` — мат/пат/ничьи/повторения.
 - [x] `feat(core): move parsing` — извлечение хода из текста/JSON (SAN→UCI), причина при неудаче.
 - [x] `test(core): move parsing` — легальные/нелегальные/мусорные входы.
-- [ ] `feat(models): pydantic data models` — `MoveRecord`, `MessageRecord`, `HintRecord`, `GameRecord`, `LLMResponse`, `AnalysisSummary`.
+- [x] `feat(models): pydantic data models` — `MoveRecord`, `MessageRecord`, `HintRecord`, `GameRecord`, `LLMResponse`, `AnalysisSummary`.
 - [ ] `feat(core): build PGN from GameRecord` — теги, ходы, комментарии-рассуждения.
 - [ ] `test(core): pgn export` — валидность и совместимость тегов.
 
