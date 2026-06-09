@@ -15,20 +15,18 @@
   (`best_move`/`evaluate`, деградация без бинарника) и ★ слой `analysis/`
   (centipawn-loss классификация + `AnalysisSummary`, D-009). Дальше в Phase 5 —
   опц. LLM-комментарий ключевых моментов и показ бейджей оценки в отчёте.
-- **Последняя завершённая задача:** `feat(analysis): centipawn loss and classification` ★
-  (D-009) — слой `analysis/`: `classify.py` (`ClassificationThresholds` с валидацией
-  возрастания порогов + `from_config`, чистая `classify_cpl`) и `analyzer.py`
-  (`analyze_game`): для каждого хода cpl = `max(0, evaluate(fen_before)+evaluate(fen_after))`
-  (POV-корректно: у `fen_after` очередь соперника → со знаком минус), проставляет
-  `MoveRecord.engine_eval_cp` (POV белых) и `classification`, эвристика `brilliant`
-  (почти лучший + жертва `_is_sacrifice` + сохранённый перевес), терминальные `fen_after`
-  движку не отдаются (мат → `±100000`, ничья → 0), сводка `AnalysisSummary` (точность +
-  счётчики + ключевые моменты), деградация в `None` без движка (D-008). Конфиг: секция
-  `analysis:` + `AnalysisConfig`. Тесты `test_analysis_analyzer.py` (9). До неё —
-  `feat(arena): hint protocol` ★ (протокол подсказок в `GameRunner`, D-010).
-- **Следующая задача:** `test(analysis): classification thresholds` ★ из `docs/TODO.md`
-  (Phase 5) — прицельные тесты порогов `classify_cpl` (границы), валидации/`from_config`
-  `ClassificationThresholds` и согласования с `config.AnalysisConfig`.
+- **Последняя завершённая задача:** `test(analysis): classification thresholds` ★ (D-009) —
+  `test_analysis_classify.py` (18): параметризованные границы `classify_cpl` (ровно на
+  пороге / на 1 ниже / 0 / отрицательный clamp / большой cpl), запрет эвристических
+  классов в градиентной классификации, конфигурируемость (строгие пороги меняют класс,
+  совпадающие границы «схлопывают» средний класс), валидация `ClassificationThresholds`
+  (возрастание порогов, неотрицательность), `from_config` и согласование с дефолтным
+  `config.yaml` (секция `analysis`). До неё — `feat(analysis): centipawn loss and
+  classification` ★ (слой `analysis/`: `analyze_game` + `classify_cpl`, D-009).
+- **Следующая задача:** в Phase 5 осталось (опц./отчёт): `feat(analysis): llm commentary
+  of key moments` ★ (опц.) и `feat(report): show eval and classification badges` ★
+  (бейджи классификации/оценки в отчёте уже есть в шаблоне — нужна сводка/связка с
+  `AnalysisSummary`). Дальше — Phase 6 (★ веб-интерфейс).
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -37,7 +35,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 358 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 376 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -94,4 +92,5 @@
 | 2026-06-09 | `feat(engine): stockfish wrapper` (D-008): ★ `engine/stockfish.py` (`StockfishEngine` + `EngineUnavailableError`) поверх python-chess UCI — `best_move(fen)→HintRecord` (uci + eval_cp/mate_in, POV ходящей стороны, D-010), `evaluate(fen)→cp` (мат→±100000 для D-009); ленивый запуск, контекстный менеджер, `opener` инъектируется для тестов; нет бинарника → `EngineUnavailableError`; **Phase 5 началась**; pytest зелёный | `81c590f` | `test(engine): stockfish (skip if absent)` |
 | 2026-06-09 | `test(engine): stockfish (skip if absent)`: ★ `test_engine_stockfish.py` (15 шт + 1 skip) — разбор оценок на фейковом движке (`.relative`/мат/глубина), жизненный цикл процесса (ленивый запуск/идемпотентный close/контекстный менеджер/переоткрытие), деградация в `EngineUnavailableError`; интеграция с реальным Stockfish пропускается без бинарника (`shutil.which`); pytest зелёный (341 passed, 2 skipped) | `3fd4183` | `feat(arena): hint protocol` ★ |
 | 2026-06-09 | `feat(arena): hint protocol` ★ (D-010): протокол подсказок в `GameRunner` — `request_hint`→`_serve_hint` тратит 1 из 3 (только при выдаче), перезапрос с инъекцией подсказки в контекст, запись `MoveRecord.hint_used`/`hint`, событие `EVENT_HINT`; ≤1 подсказка на ход; деградация без движка/при лимите/`EngineUnavailableError` (D-008); параметр `GameRunner(engine=...)` + Protocol `HintEngine`; уточнения в D-010; тесты `test_arena_runner.py` (+7); pytest зелёный (349 passed, 1 skipped) | `c5bb7a6` | `feat(analysis): centipawn loss and classification` ★ |
-| 2026-06-09 | `feat(analysis): centipawn loss and classification` ★ (D-009): слой `analysis/` — `classify.py` (`ClassificationThresholds`+валидация+`from_config`, `classify_cpl`) и `analyzer.py` (`analyze_game`): cpl из двух POV-оценок, разметка `MoveRecord.engine_eval_cp`(POV белых)/`classification`, эвристика `brilliant` (жертва), терминальные `fen_after` без движка, сводка `AnalysisSummary`, деградация без движка (D-008); конфиг `analysis:`+`AnalysisConfig`; уточнения в D-009; тесты `test_analysis_analyzer.py` (9); pytest зелёный (358 passed, 1 skipped) | _pending_ | `test(analysis): classification thresholds` ★ |
+| 2026-06-09 | `feat(analysis): centipawn loss and classification` ★ (D-009): слой `analysis/` — `classify.py` (`ClassificationThresholds`+валидация+`from_config`, `classify_cpl`) и `analyzer.py` (`analyze_game`): cpl из двух POV-оценок, разметка `MoveRecord.engine_eval_cp`(POV белых)/`classification`, эвристика `brilliant` (жертва), терминальные `fen_after` без движка, сводка `AnalysisSummary`, деградация без движка (D-008); конфиг `analysis:`+`AnalysisConfig`; уточнения в D-009; тесты `test_analysis_analyzer.py` (9); pytest зелёный (358 passed, 1 skipped) | `6454712` | `test(analysis): classification thresholds` ★ |
+| 2026-06-09 | `test(analysis): classification thresholds` ★ (D-009): `test_analysis_classify.py` (18) — параметризованные границы `classify_cpl` (на пороге/на 1 ниже/0/отрицательный clamp/большой), запрет эвристических классов, конфигурируемость и «схлопывание» среднего класса, валидация порогов (возрастание/неотрицательность), `from_config` + согласование с дефолтным `config.yaml`; pytest зелёный (376 passed, 1 skipped) | _pending_ | `feat(report): show eval and classification badges` ★ / Phase 6 |
