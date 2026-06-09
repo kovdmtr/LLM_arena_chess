@@ -9,6 +9,7 @@ from arena.config.settings import (
     ModelParams,
     OutputConfig,
     ProviderConfig,
+    RetryConfig,
     Secrets,
     Settings,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "OutputConfig",
     "ProviderConfig",
     "ResolvedModel",
+    "RetryConfig",
     "Secrets",
     "Settings",
 ]

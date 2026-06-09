@@ -15,6 +15,13 @@ engine:
   analysis_depth: 18
   hint_depth: 18
 
+retry:                           # повтор вызова провайдера при временных сбоях (Phase 7)
+  attempts: 3                    # всего попыток (1 = без повторов)
+  base_delay: 0.5                # старт экспоненциального backoff, сек
+  max_delay: 8.0                 # потолок задержки, сек
+  multiplier: 2.0                # множитель backoff между попытками
+  jitter: 0.1                    # доля размытия задержки [0..1], чтобы избежать синхронных повторов
+
 analysis:                        # ★ пороги классификации ходов (centipawn loss, D-009)
   enabled: true
   inaccuracy_cp: 50              # cpl ≥ — неточность

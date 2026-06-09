@@ -73,7 +73,7 @@
 - [x] `feat(prompts): optional legal-moves list` ★ (D-021) — флаг `include_legal_moves` (дефолт `false`): ИИ не получает список легальных ходов, легальность проверяется после хода (ретрай D-006). Сквозной `config.yaml`→`ArenaConfig`/`PlayerSettings`→`system`/`context`.
 
 ## Phase 7 — Закалка
-- [ ] `feat(providers): retry with backoff` — устойчивость к rate-limit/сетевым сбоям.
+- [x] `feat(providers): retry with backoff` — устойчивость к rate-limit/сетевым сбоям (D-022).
 - [ ] `feat(obs): logging with key masking` — структурное логирование, маскирование секретов.
 - [ ] `chore: graceful degradation without engine` — единый путь отключения ★ при отсутствии Stockfish.
 - [ ] `test: full e2e run` — прогон база+★ на фейковых игроках.

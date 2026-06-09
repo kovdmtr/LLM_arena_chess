@@ -17,7 +17,7 @@ from collections.abc import Sequence
 import openai
 
 from arena.config import ResolvedModel
-from arena.config.settings import ModelParams
+from arena.config.settings import ModelParams, RetryConfig
 from arena.models import MessageRecord
 from arena.providers.base import (
     LLMProvider,
@@ -31,8 +31,8 @@ from arena.providers.base import (
 class OpenAIProvider(LLMProvider):
     """Провайдер OpenAI (Chat Completions)."""
 
-    def __init__(self, model: ResolvedModel) -> None:
-        super().__init__(model)
+    def __init__(self, model: ResolvedModel, *, retry: RetryConfig | None = None) -> None:
+        super().__init__(model, retry=retry)
         self._client: openai.OpenAI | None = None
 
     def _ensure_client(self) -> "openai.OpenAI":
@@ -54,7 +54,7 @@ class OpenAIProvider(LLMProvider):
         if params.temperature is not None:  # None → не передаём (см. ModelParams)
             kwargs["temperature"] = params.temperature
         try:
-            response = client.chat.completions.create(**kwargs)
+            response = self._call(lambda: client.chat.completions.create(**kwargs))
         except Exception as exc:  # SDK/транспорт — единая ошибка слоя
             raise ProviderError(
                 mask_secret(

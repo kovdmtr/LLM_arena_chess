@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Корень репозитория: .../src/arena/config/settings.py -> подняться на 4 уровня.
@@ -55,6 +55,36 @@ class AnalysisConfig(BaseModel):
     brilliant_min_eval_cp: int = 100
 
 
+class RetryConfig(BaseModel):
+    """Политика повторов вызова провайдера при временных сбоях (Phase 7).
+
+    Применяется к транзиентным ошибкам SDK (rate-limit/таймаут/сетевой сбой/5xx) —
+    см. ``providers.retry``. Постоянные ошибки (неверный ключ, 4xx кроме 429) не
+    повторяются. ``attempts`` — общее число попыток (1 = без повторов). Задержка
+    растёт экспоненциально: ``base_delay * multiplier**(n-1)``, но не выше
+    ``max_delay``; ``jitter`` (доля 0..1) размывает её, чтобы избежать
+    синхронных повторов.
+    """
+
+    attempts: int = 3
+    base_delay: float = 0.5
+    max_delay: float = 8.0
+    multiplier: float = 2.0
+    jitter: float = 0.1
+
+    @model_validator(mode="after")
+    def _check(self) -> "RetryConfig":
+        if self.attempts < 1:
+            raise ValueError("retry.attempts должно быть ≥ 1")
+        if self.base_delay < 0 or self.max_delay < 0:
+            raise ValueError("retry.base_delay/max_delay должны быть ≥ 0")
+        if self.multiplier < 1:
+            raise ValueError("retry.multiplier должно быть ≥ 1")
+        if not 0 <= self.jitter <= 1:
+            raise ValueError("retry.jitter должно быть в диапазоне [0, 1]")
+        return self
+
+
 class ProviderConfig(BaseModel):
     """Несекретное описание провайдера: имя переменной окружения с ключом."""
 
@@ -95,6 +125,7 @@ class AppConfig(BaseModel):
     arena: ArenaConfig = Field(default_factory=ArenaConfig)
     engine: EngineConfig = Field(default_factory=EngineConfig)
     analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
+    retry: RetryConfig = Field(default_factory=RetryConfig)
     providers: dict[str, ProviderConfig] = Field(default_factory=dict)
     models: list[ModelConfig] = Field(default_factory=list)
     output: OutputConfig = Field(default_factory=OutputConfig)

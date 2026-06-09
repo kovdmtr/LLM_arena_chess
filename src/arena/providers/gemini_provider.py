@@ -30,7 +30,7 @@ from google import genai
 from google.genai import types
 
 from arena.config import ResolvedModel
-from arena.config.settings import ModelParams
+from arena.config.settings import ModelParams, RetryConfig
 from arena.models import MessageRecord
 from arena.providers.base import (
     LLMProvider,
@@ -47,8 +47,8 @@ _ROLE_MAP = {"user": "user", "assistant": "model"}
 class GeminiProvider(LLMProvider):
     """Провайдер Google Gemini (``generate_content``) с system_instruction."""
 
-    def __init__(self, model: ResolvedModel) -> None:
-        super().__init__(model)
+    def __init__(self, model: ResolvedModel, *, retry: RetryConfig | None = None) -> None:
+        super().__init__(model, retry=retry)
         self._client: "genai.Client | None" = None
 
     def _ensure_client(self) -> "genai.Client":
@@ -81,10 +81,12 @@ class GeminiProvider(LLMProvider):
         config = types.GenerateContentConfig(**config_kwargs)
 
         try:
-            response = client.models.generate_content(
-                model=self.model.id,
-                contents=contents,
-                config=config,
+            response = self._call(
+                lambda: client.models.generate_content(
+                    model=self.model.id,
+                    contents=contents,
+                    config=config,
+                )
             )
         except Exception as exc:  # SDK/транспорт — единая ошибка слоя
             raise ProviderError(

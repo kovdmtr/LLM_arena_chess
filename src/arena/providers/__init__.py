@@ -13,6 +13,7 @@ from arena.providers.base import (
     register_provider,
     registered_providers,
 )
+from arena.providers.retry import call_with_retry, is_transient_error
 
 # Импорт реализаций регистрирует их в реестре (фабрика по имени провайдера).
 from arena.providers.anthropic_provider import AnthropicProvider
@@ -25,7 +26,9 @@ __all__ = [
     "AnthropicProvider",
     "GeminiProvider",
     "OpenAIProvider",
+    "call_with_retry",
     "create_provider",
+    "is_transient_error",
     "mask_secret",
     "register_provider",
     "registered_providers",

@@ -16,12 +16,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import TypeVar
 
 from arena.config import ResolvedModel
-from arena.config.settings import ModelParams
+from arena.config.settings import ModelParams, RetryConfig
 from arena.models import MessageRecord
+from arena.providers.retry import call_with_retry
 
 
 class ProviderError(RuntimeError):
@@ -56,8 +57,24 @@ class LLMProvider(ABC):
     ``ResolvedModel`` (``api_key`` исключён из сериализации, D-003).
     """
 
-    def __init__(self, model: ResolvedModel) -> None:
+    def __init__(
+        self, model: ResolvedModel, *, retry: RetryConfig | None = None
+    ) -> None:
         self.model = model
+        # Политика повторов при временных сбоях SDK (Phase 7). По умолчанию —
+        # дефолтная (3 попытки, экспоненциальный backoff); вызывающий может задать
+        # свою из ``config.yaml`` через ``create_provider(retry=...)``.
+        self.retry = retry if retry is not None else RetryConfig()
+
+    def _call(self, fn: "Callable[[], object]") -> object:
+        """Выполнить SDK-вызов ``fn`` с повторами по ``self.retry``.
+
+        Обёртка над ``call_with_retry``: реализация ``complete`` вызывает SDK через
+        этот хелпер внутри своего ``try/except``, чтобы временные сбои повторялись,
+        а итоговое (или постоянное) исключение, как и прежде, оборачивалось в
+        ``ProviderError`` с маскированием ключа.
+        """
+        return call_with_retry(fn, self.retry)
 
     @property
     def name(self) -> str:
@@ -116,8 +133,13 @@ def registered_providers() -> list[str]:
     return sorted(_REGISTRY)
 
 
-def create_provider(model: ResolvedModel) -> LLMProvider:
+def create_provider(
+    model: ResolvedModel, *, retry: RetryConfig | None = None
+) -> LLMProvider:
     """Построить провайдера по ``ResolvedModel`` (фабрика по имени провайдера).
+
+    ``retry`` — необязательная политика повторов при временных сбоях (Phase 7);
+    если не задана, реализация использует дефолтную ``RetryConfig``.
 
     ``ProviderError`` с понятным сообщением, если имя провайдера не
     зарегистрировано (например, его модуль-реализация не импортирован).
@@ -129,4 +151,4 @@ def create_provider(model: ResolvedModel) -> LLMProvider:
             f"неизвестный провайдер {model.provider!r}; "
             f"зарегистрированы: {known}"
         )
-    return cls(model)
+    return cls(model, retry=retry)
