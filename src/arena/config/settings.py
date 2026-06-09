@@ -38,6 +38,22 @@ class EngineConfig(BaseModel):
     hint_depth: int = 18
 
 
+class AnalysisConfig(BaseModel):
+    """★ Пороги классификации ходов по centipawn loss (D-009).
+
+    Универсально «правильных» значений нет, поэтому они вынесены в конфиг. Пороги
+    cpl должны возрастать (``inaccuracy_cp`` ≤ ``mistake_cp`` ≤ ``blunder_cp``);
+    согласованность проверяет ``analysis.ClassificationThresholds``.
+    """
+
+    enabled: bool = True
+    inaccuracy_cp: int = 50
+    mistake_cp: int = 120
+    blunder_cp: int = 300
+    brilliant_max_cpl: int = 10
+    brilliant_min_eval_cp: int = 100
+
+
 class ProviderConfig(BaseModel):
     """Несекретное описание провайдера: имя переменной окружения с ключом."""
 
@@ -71,6 +87,7 @@ class AppConfig(BaseModel):
 
     arena: ArenaConfig = Field(default_factory=ArenaConfig)
     engine: EngineConfig = Field(default_factory=EngineConfig)
+    analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
     providers: dict[str, ProviderConfig] = Field(default_factory=dict)
     models: list[ModelConfig] = Field(default_factory=list)
     output: OutputConfig = Field(default_factory=OutputConfig)

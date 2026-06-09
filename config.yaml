@@ -13,6 +13,14 @@ engine:
   analysis_depth: 18
   hint_depth: 18
 
+analysis:                        # ★ пороги классификации ходов (centipawn loss, D-009)
+  enabled: true
+  inaccuracy_cp: 50              # cpl ≥ — неточность
+  mistake_cp: 120               # cpl ≥ — ошибка
+  blunder_cp: 300               # cpl ≥ — зевок
+  brilliant_max_cpl: 10         # «блестящий»: ход почти лучший (cpl ≤ этого) …
+  brilliant_min_eval_cp: 100    # … + жертва материала при сохранении перевеса (≥ этого)
+
 providers:
   openai:    { api_key_env: OPENAI_API_KEY }
   anthropic: { api_key_env: ANTHROPIC_API_KEY }
