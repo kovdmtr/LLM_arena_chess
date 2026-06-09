@@ -54,7 +54,7 @@
 
 ## Phase 5 — ★ Движок: подсказки и анализ
 - [x] `feat(engine): stockfish wrapper` ★ — `best_move`, `evaluate`, корректная деградация без бинарника.
-- [ ] `test(engine): stockfish (skip if absent)` ★.
+- [x] `test(engine): stockfish (skip if absent)` ★.
 - [ ] `feat(arena): hint protocol` ★ — `request_hint`, лимит 3/игрока, запись `HintRecord`, инъекция подсказки в контекст.
 - [ ] `feat(analysis): centipawn loss and classification` ★ — пороги из конфига, `AnalysisSummary`.
 - [ ] `test(analysis): classification thresholds` ★.
