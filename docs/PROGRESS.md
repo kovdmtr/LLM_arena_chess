@@ -8,26 +8,29 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 0–6 закрыты; **Phase 7 (закалка) В РАБОТЕ.** Сделано в Phase 7:
-  `feat(providers): retry with backoff` (D-022), `feat(obs): logging with key masking`
-  (D-023), `chore: graceful degradation without engine` (D-024, +движок в веб-партии),
-  `test: full e2e run` (база+★ на фейках). Осталось: пример партии + финал доков. Готов `GameRunner`
+- **Фаза:** **Phase 0–7 ЗАКРЫТЫ — проект функционально завершён.** Phase 7 (закалка)
+  закрыта целиком: `feat(providers): retry with backoff` (D-022),
+  `feat(obs): logging with key masking` (D-023), `chore: graceful degradation without
+  engine` (D-024, +движок в веб-партии), `test: full e2e run` (база+★ на фейках),
+  `docs: finalize and add sample game` (пример `examples/sample-game/` + README/ROADMAP).
+  Все исходные задачи `docs/TODO.md` (Phase 0–7) выполнены; остаётся только бэклог
+  (турниры, агрегированная статистика, альтернативные движки). Готов `GameRunner`
   (с протоколом подсказок, D-010), слой `storage` (`game.json` + `game.pgn` +
   `report.html`), слой `report` (SVG/опц. PNG + Jinja2-отчёт со сводкой ★-анализа),
   ★ обёртка движка `engine/stockfish.py` (`best_move`/`evaluate`, деградация без
   бинарника), ★ слой `analysis/` (centipawn-loss классификация + `AnalysisSummary` +
   LLM-комментарий ключевых моментов, D-009) и ★ веб-интерфейс (Phase 6).
-- **Последняя завершённая задача:** `test: full e2e run` ★закалка — `test_full_e2e.py`
-  (4 теста): фейковые игроки доигрывают мат Шольяра, белым выдаётся подсказка движком
-  (D-010); `analyze_game` размечает все ходы и поднимает скриптованный «зевок» в ключевой
-  момент (D-009); фейковый комментатор заполняет его (D-009 опц.); экспортируются
-  `game.json`+`game.pgn`+`report.html` — отчёт self-contained, показывает анализ и
-  комментарий, без секретов (D-003). Заодно убрана хрупкость hint-игрока в
-  `test_web_engine` (перезапрос подсказки повторяет тот же полуход). До неё — движок в
-  веб (D-024).
-- **Следующая задача:** `docs: finalize and add sample game` — сгенерировать пример
-  `game.json`/`game.pgn`/`report.html` (в репозиторий), актуализировать `README.md` и
-  доки под Phase 7 (retry/logging/движок-в-веб). Это закрывает Phase 7.
+- **Последняя завершённая задача:** `docs: finalize and add sample game` ★закалка —
+  `scripts/generate_sample_game.py` (детерминированно, без сети/ключей, с настоящим
+  анализом Stockfish) генерирует пример в `examples/sample-game/`
+  (`game.json`+`game.pgn`+`report.html`): детский мат GPT-4o vs Claude Opus 4.8 с
+  выданной подсказкой и реальной классификацией (inaccuracy + blunder→ключевой момент).
+  Переписан устаревший `README.md` (был «код не написан») — quickstart, фичи, ссылка на
+  пример; Phase 7 помечена закрытой в `ROADMAP.md`/`TODO.md`. До неё — full e2e.
+- **Следующая задача:** исходный план (Phase 0–7) выполнен. Дальше — только **бэклог**
+  `docs/TODO.md`: турниры из нескольких партий + таблица результатов; экспорт нескольких
+  партий + агрегированная статистика моделей; альтернативные движки/глубины + кеш оценок.
+  Берётся по запросу пользователя.
 - **Примечание (среда):** установленный Starlette использует НОВУЮ сигнатуру
   `Jinja2Templates.TemplateResponse(request, name, context)` (старый порядок
   `(name, {"request": ...})` падает `TypeError: unhashable type: 'dict'`). `TestClient`
@@ -42,8 +45,9 @@
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
 - Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 503 passed, 1 skipped: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base/openai/anthropic/gemini/transport/retry + obs logging + web logging + engine factory + web engine + full e2e (база+★) + arena player + arena runner (вкл. протокол подсказок ★) + prompts system + prompts context (+ fixtures) + storage game store (+ pgn export + pgn opens as valid game) + report board image (PNG skip без cairosvg) + report html template (вкл. сводку ★-анализа + интерактивный плеер) + report render from fixture + engine stockfish (real-binary тест проходит — движок в `tools/bin`) + analysis analyzer ★ + analysis classify ★ + analysis commentary ★ + web app skeleton ★ + web model selection ★ + web start game ★ + web live view ★ + web games view ★ + config provider names + optional temperature (omit when null) + arena e2e + smoke; единственный skip — PNG-рендер без `cairosvg`).
-- Запуск веб-UI: `\.venv\Scripts\python.exe -m uvicorn arena.web.app:app` (каркас: `/`, `/health`, `/static`).
-- Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
+- Запуск веб-UI: `\.venv\Scripts\python.exe -m uvicorn arena.web.app:app` (выбор моделей `/games/new`, старт `POST /games`, живой просмотр, список/отчёты `/games`).
+- Пример партии: `\.venv\Scripts\python.exe scripts\generate_sample_game.py` → `examples/sample-game/` (game.json+PGN+report.html, реальный анализ Stockfish).
+- Служебный прогон партии из CLI: _TBD (`src/arena/cli.py` пока заглушка; запуск партий — через веб-UI)._
 
 ## Открытые хвосты / заметки
 
@@ -114,3 +118,4 @@
 | 2026-06-09 | `feat(obs): logging with key masking` ★закалка (D-023): слой `obs` — namespaced-логгер `arena`, `StructuredFormatter` (текст/JSON) + сквозное маскирование на форматтере (сообщение/args/extra/трейсбек); глобальный реестр секретов авто-наполняется (`LLMProvider.__init__`→`register_secret(model.api_key)`, веб `_ensure_settings`); `NullHandler` до `configure_logging`; `GameManager` логирует старт/финал/сбой; тесты `test_obs_logging.py`(17)+`test_web_logging.py`(2); pytest зелёный (490 passed, 1 skipped) | `064aab5` | `chore: graceful degradation without engine` (+движок в веб) |
 | 2026-06-09 | `chore: graceful degradation without engine` ★закалка (D-024): `engine.build_engine(EngineConfig)` — единая точка «движок есть/нет» (`enabled=false`/нет бинарника → `None`, иначе открытый `StockfishEngine`); движок подключён в веб — `GameManager(engine_factory/analysis_config/analysis_depth)`: подсказки в `GameRunner` + `analyze_game`→`record.analysis` после `play()` + закрытие в `finally`; `web._get_manager` строит фабрику из конфига; тесты `test_engine_factory.py`(5)+`test_web_engine.py`(4); pytest зелёный (499 passed, 1 skipped) | `3e84831` | `test: full e2e run` |
 | 2026-06-09 | `test: full e2e run` ★закалка: `test_full_e2e.py` (4) — фейки доигрывают мат Шольяра + подсказка движком (D-010) + `analyze_game` (зевок→ключевой момент, D-009) + фейковый комментарий (D-009 опц.) → экспорт `game.json`+`game.pgn`+`report.html`, отчёт self-contained показывает анализ/комментарий, без секретов; де-флейк hint-игрока в `test_web_engine`; pytest зелёный (503 passed, 1 skipped) | `a9da105` | `docs: finalize and add sample game` |
+| 2026-06-09 | `docs: finalize and add sample game` ★закалка: `scripts/generate_sample_game.py` + пример `examples/sample-game/` (game.json+PGN+report.html, реальный анализ Stockfish: детский мат, подсказка, inaccuracy+blunder); переписан `README.md` (quickstart/фичи/ссылка на пример), `examples/README.md`, Phase 7 закрыта в `ROADMAP.md`/`TODO.md`. **Phase 7 ЗАКРЫТА → Phase 0–7 завершены.** pytest зелёный (503 passed, 1 skipped) | `3559f79` | бэклог (по запросу) |
