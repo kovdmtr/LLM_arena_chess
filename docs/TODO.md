@@ -50,7 +50,7 @@
 - [x] `feat(report): board image rendering` — SVG (+ опц. PNG через cairosvg).
 - [x] `feat(report): html report template` — Jinja2: шапка, ходы, доски, рассуждения, итог.
 - [x] `feat(report): render report from game.json` — генерация self-contained `report.html`.
-- [ ] `test(report): report renders from fixture` — smoke-тест рендера.
+- [x] `test(report): report renders from fixture` — smoke-тест рендера.
 
 ## Phase 5 — ★ Движок: подсказки и анализ
 - [ ] `feat(engine): stockfish wrapper` ★ — `best_move`, `evaluate`, корректная деградация без бинарника.
