@@ -35,7 +35,7 @@
 - [x] `feat(arena): model player` — `ModelPlayer` поверх провайдера, возвращает `LLMResponse`.
 
 ## Phase 3 — Игровой цикл
-- [ ] `feat(prompts): system prompt and response format` — правила + строгий JSON-формат ответа.
+- [x] `feat(prompts): system prompt and response format` — правила + строгий JSON-формат ответа.
 - [ ] `feat(prompts): context builder` — FEN, легальные ходы, PGN, история, объяснения обеих сторон, остаток подсказок, причина ретрая.
 - [ ] `test(prompts): context builder` — содержимое контекста на фикстурах.
 - [ ] `feat(arena): game runner core loop` — чередование сторон, ведение board+record, события.

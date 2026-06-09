@@ -8,30 +8,27 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 3 — Игровой цикл (началась). Phase 0–2 закрыты. Первый шаг
-  Phase 3 — `ModelPlayer` — готов; дальше: промпты (`feat(prompts): system prompt
-  and response format`).
-- **Последняя завершённая задача:** `feat(arena): model player` —
-  `src/arena/arena/player.py` (`ModelPlayer` + `parse_response`). `ModelPlayer`
-  соединяет слой провайдера и домен: `respond(messages)` → `provider.complete`
-  (сырой текст) → `parse_response` → `LLMResponse` (D-007). Параметры генерации
-  фиксируются на игрока (по умолчанию из `ResolvedModel`, можно переопределить);
-  `info` отдаёт `PlayerInfo` без ключа (D-003); `ProviderError` пробрасывается.
-  Парсер устойчив к тексту вокруг JSON: `_extract_json_objects` сканирует строку,
-  отслеживая глубину `{}` и строковые литералы с экранированием (скобки внутри
-  строк не ломают баланс), парсит каждый сбалансированный объект; `_select_payload`
-  берёт первый объект с ключом `move` (иначе первый валидный) — устойчиво к
-  markdown-ограждению и прозе/примерам вокруг. Поля приводятся терпимо: bool из
-  строки/числа (`"true"`/`1`), пустой/`null` `move` → `None`. Нет распознаваемого
-  JSON → `LLMResponse(reasoning=text, move=None)` (вышестоящий слой обработает как
-  нераспознанный ход, ретрай D-006), парсер не падает. Тесты
-  `tests/test_arena_player.py` (20 шт) на фейк-провайдере: оркестрация (параметры,
-  проброс ошибки, `info`/`repr` без секрета) + разбор (полный объект, UCI, дефолты,
-  fence/проза, скобки-в-строке, выбор объекта с `move`, терпимость к типам, сдача/
-  подсказка без хода, деградация без JSON).
-- **Следующая задача:** `feat(prompts): system prompt and response format` из
-  `docs/TODO.md` (Phase 3) — системный промпт (правила игры + строгий JSON-формат
-  ответа D-007), который будет читать `parse_response`.
+- **Фаза:** Phase 3 — Игровой цикл (идёт). Phase 0–2 закрыты. Готовы `ModelPlayer`
+  и системный промпт; дальше — context builder (`feat(prompts): context builder`).
+- **Последняя завершённая задача:** `feat(prompts): system prompt and response
+  format` — `src/arena/prompts/system.py` (`build_system_prompt`, `system_message`,
+  `RESPONSE_KEYS`). Статичный системный промпт (D-017): описывает правила (классика,
+  без контроля времени, запрет пропуска хода D-015) и строгий JSON-протокол ответа
+  D-007 (`{ reasoning, move, request_hint, resign }`, ход SAN/UCI из списка
+  легальных, 3-strike → technical_loss, 3 подсказки/партию, сдача). Текст на
+  английском, зависит только от лимитов партии (`hints_per_player`,
+  `illegal_move_retries`), которые в игре неизменны → промпт кэшируем (D-019).
+  Канонические ключи вынесены в `RESPONSE_KEYS` (единый источник для текста и
+  тестов); пример-объект из промпта разбирается тем же `parse_response`, что и
+  реальные ответы (тест согласованности). `system_message` оборачивает текст в
+  `MessageRecord(role="system")`. Тесты `tests/test_prompts_system.py` (11 шт):
+  все ключи протокола в тексте, подстановка дефолтных/кастомных лимитов, нет
+  неподставленных плейсхолдеров, обе нотации + запрет пропуска, пример = валидный
+  JSON с ключами протокола, round-trip через `parse_response`, обёртка в
+  `MessageRecord`, стабильность текста, отсутствие секретов.
+- **Следующая задача:** `feat(prompts): context builder` из `docs/TODO.md`
+  (Phase 3) — сборка per-turn контекста: цвет+номер хода, FEN, легальные ходы
+  (SAN), PGN, история, объяснения обеих сторон, остаток подсказок, причина ретрая.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -40,7 +37,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 194 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 205 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + prompts system + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -75,3 +72,4 @@
 | 2026-06-09 | `feat(providers): gemini`: `providers/gemini_provider.py` (`GeminiProvider` поверх SDK `google-genai`, `generate_content`); system → `system_instruction`, маппинг роли `assistant`→`model`, параметры в `GenerateContentConfig`, ответ `response.text`, ленивое кэширование клиента, обёртка ошибок + `mask_secret`; регистрация `@register_provider("gemini")` + импорт в `__init__`; тесты `test_providers_gemini.py` (12 шт на моках); D-018 в DECISIONS; **все 3 провайдера готовы**; pytest зелёный (155 passed) | `2ab06cc` | `test(providers): mocked transport` |
 | 2026-06-09 | `test(providers): mocked transport`: `tests/test_providers_transport.py` (19 шт) — единый кросс-провайдерный контракт за фабрикой (реестр=3, тип провайдера, сырой текст, обёртка+маскирование ошибки, пустой ответ, ленивое кэширование, `repr` без ключа), параметризован по openai/anthropic/gemini через `_Case`/`_make_fake_client`; **Phase 2 закрыта**; pytest зелёный (174 passed) | `375b851` | `feat(arena): model player` |
 | 2026-06-09 | `feat(arena): model player`: `src/arena/arena/player.py` (`ModelPlayer` + `parse_response`) — обёртка над провайдером: `respond` → `complete` → разбор сырого текста в `LLMResponse` (D-007); устойчивый JSON-парсер (баланс `{}` с учётом строк, выбор объекта с `move`, терпимость к типам, деградация без JSON → move=None); `info`/`repr` без ключа; **Phase 3 началась**; тесты `test_arena_player.py` (20 шт); pytest зелёный (194 passed) | `6a999ac` | `feat(prompts): system prompt and response format` |
+| 2026-06-09 | `feat(prompts): system prompt and response format`: `src/arena/prompts/system.py` (`build_system_prompt`/`system_message`/`RESPONSE_KEYS`) — статичный системный промпт (правила + строгий JSON-протокол D-007), английский, зависит только от лимитов партии → кэшируем (D-019); ключи протокола вынесены в `RESPONSE_KEYS`, согласованность с `parse_response` под тестом; D-019 в DECISIONS; тесты `test_prompts_system.py` (11 шт); pytest зелёный (205 passed) | _pending_ | `feat(prompts): context builder` |
