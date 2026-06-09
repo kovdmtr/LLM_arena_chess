@@ -8,16 +8,18 @@
 
 ## Текущее состояние
 
-- **Фаза:** Phase 0 — Каркас и конфиг (ещё не начата по коду).
-- **Последняя завершённая задача:** документация и инфраструктура сессий (git init,
-  `PROGRESS.md`, ритуал сессий в `CLAUDE.md`). Код ещё не написан.
-- **Следующая задача:** `chore: init project` из `docs/TODO.md` (Phase 0).
+- **Фаза:** Phase 0 — Каркас и конфиг (начата по коду).
+- **Последняя завершённая задача:** `chore: init project` — `pyproject.toml`
+  (зависимости + dev/report-png extras, entry point `arena`), скелет пакета
+  `src/arena/` (12 слоёв по `ARCHITECTURE.md`), `tests/` со smoke-тестом.
+- **Следующая задача:** `chore: add gitignore and env example` из `docs/TODO.md`
+  (Phase 0). `.gitignore` уже есть — осталось добавить `.env.example`.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
 
-- Установка: _TBD (появится с `pyproject.toml`)_
-- Тесты: _TBD (`pytest`)_
+- Установка: `pip install -e ".[dev]"` (Python 3.11+)
+- Тесты: `pytest` (пока только smoke-тест каркаса)
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -33,3 +35,4 @@
 | Дата       | Сделано                                              | Коммит(ы)        | Дальше              |
 |------------|------------------------------------------------------|------------------|---------------------|
 | 2026-06-09 | Документация проекта + инфраструктура сессий, git init | (initial commit) | `chore: init project` |
+| 2026-06-09 | `chore: init project`: pyproject + скелет `src/arena/` (12 слоёв) + smoke-тест | _(этот коммит)_ | `chore: add gitignore and env example` |
