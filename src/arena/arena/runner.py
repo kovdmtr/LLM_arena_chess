@@ -15,19 +15,18 @@
 применяется к доске и записывается в ``GameRecord``. Параллельно раннер
 испускает события (``on_event``) — их позже потребляет live-просмотр (Phase 6).
 
-Границы этой задачи (один коммит = одна задача). Раннер ведёт **happy path**:
-кооперативные игроки присылают легальные ходы. Намеренно НЕ реализованы здесь и
-вынесены в следующие задачи Phase 3:
+Нелегальный/нераспознанный ход обрабатывается по D-006: попытка фиксируется в
+``IllegalAttempt``, модели возвращается коррекция (причина + легальные ходы) через
+``context(retry=...)``, и она ходит заново. ``illegal_move_retries`` нелегальных
+попыток подряд на одном ходу → техническое поражение (``termination=
+technical_loss``); счётчик попыток локален ходу и сбрасывается после успешного
+хода. Удачные попытки складываются в ``MoveRecord.illegal_attempts``.
 
-- ретрай нелегального хода и техническое поражение (D-006) —
-  ``feat(arena): illegal move retry and technical loss``;
-- проставление ``result``/``termination`` и обработка ``resign`` —
-  ``feat(arena): game end and result/termination``.
-
-Пока этих веток нет, нелегальный/пустой ход и заявленная сдача поднимают
-``GameRunnerError`` — явный шов, который следующие задачи заменят корректной
-обработкой. После окончания партии раннер возвращает ``GameRecord`` с ходами;
-``result`` остаётся ``"*"`` до задачи финализации.
+Границы этой задачи. Заявленная сдача (``resign``) и проставление
+``result``/``termination`` для **обычных** окончаний (мат/пат/ничьи из
+``Board.outcome``) вынесены в следующую задачу Phase 3
+(``feat(arena): game end and result/termination``); пока ``resign`` поднимает
+``GameRunnerError``, а после обычного окончания ``result`` остаётся ``"*"``.
 """
 
 from __future__ import annotations
@@ -40,6 +39,7 @@ from arena.arena.player import ModelPlayer
 from arena.core import Board, MoveParseError, ParsedMove, parse_move
 from arena.models import (
     GameRecord,
+    IllegalAttempt,
     LLMResponse,
     MessageRecord,
     MoveRecord,
@@ -52,18 +52,22 @@ from arena.prompts import context_message, system_message
 # CLI, тесты), поэтому значения стабильны.
 EVENT_GAME_START = "game_start"
 EVENT_TURN_START = "turn_start"
+EVENT_ILLEGAL = "illegal_attempt"
 EVENT_MOVE = "move"
 EVENT_GAME_OVER = "game_over"
 
 _SIDES: tuple[Side, Side] = ("white", "black")
 
+# PGN-результат при поражении стороны (победа соперника).
+_LOSS_RESULT: dict[Side, str] = {"white": "0-1", "black": "1-0"}
+
 
 class GameRunnerError(RuntimeError):
     """Игровой цикл не может продолжиться корректно.
 
-    В этой задаче поднимается на ветках, реализуемых следующими задачами Phase 3
-    (нелегальный/пустой ход — ретрай и техническое поражение D-006; заявленная
-    сдача — финализация результата). Кооперативные игроки её не вызывают.
+    В этой задаче поднимается только на ветке заявленной сдачи (``resign``) —
+    её обработка реализуется следующей задачей Phase 3. Кооперативные игроки её
+    не вызывают.
     """
 
 
@@ -145,28 +149,42 @@ class GameRunner:
     def play(self) -> GameRecord:
         """Доиграть партию из текущей позиции и вернуть заполненный ``GameRecord``.
 
-        Цикл идёт, пока партия не окончена (``Board.is_game_over`` с учётом D-012)
-        и не достигнут ``max_plies``. ``result``/``termination`` здесь не проставляются
-        (задача финализации) — раннер возвращает запись с накопленными ходами.
+        Цикл идёт, пока партия не окончена — по правилам доски (``Board.is_game_over``
+        с учётом D-012) или техническим поражением (``termination`` уже выставлен) —
+        и пока не достигнут ``max_plies``. ``result``/``termination`` для обычных
+        окончаний здесь не проставляются (задача финализации); техническое поражение
+        проставляет их само.
         """
         self._emit(
             EVENT_GAME_START,
             {"fen": self._board.fen(), "to_move": self._board.turn},
         )
-        while not self._board.is_game_over():
+        while not self._is_over():
             if self._max_plies is not None and len(self._game.moves) >= self._max_plies:
                 break
             self._play_turn()
         self._emit(
             EVENT_GAME_OVER,
-            {"fen": self._board.fen(), "plies": len(self._game.moves)},
+            {
+                "fen": self._board.fen(),
+                "plies": len(self._game.moves),
+                "result": self._game.result,
+                "termination": self._game.termination,
+            },
         )
         return self._game
 
-    def _play_turn(self) -> MoveRecord:
-        """Провести один полуход: запрос модели → легальный ход → запись."""
+    def _is_over(self) -> bool:
+        """Окончена ли партия: по правилам доски или уже зафиксированным исходом."""
+        return self._game.termination is not None or self._board.is_game_over()
+
+    def _play_turn(self) -> MoveRecord | None:
+        """Провести один полуход с ретраями нелегального хода (D-006).
+
+        Возвращает ``MoveRecord`` при успешном ходе либо ``None``, если ход закончился
+        техническим поражением (исчерпан лимит ``illegal_move_retries``).
+        """
         side: Side = self._board.turn  # type: ignore[assignment]
-        player = self._players[side]
         self._emit(
             EVENT_TURN_START,
             {
@@ -176,49 +194,85 @@ class GameRunner:
             },
         )
 
+        limit = self._game.settings.illegal_move_retries
+        attempts: list[IllegalAttempt] = []
+        retry: IllegalAttempt | None = None
+        while True:
+            response = self._query(side, retry)
+            if response.resign:
+                # Обработка сдачи — следующая задача Phase 3 (финализация результата).
+                raise GameRunnerError(
+                    f"{side} заявил сдачу — обработка resign в этой задаче не реализована"
+                )
+
+            parsed, rejected = self._resolve_move(response)
+            if parsed is not None:
+                return self._apply_move(side, parsed, response, attempts)
+
+            # Нелегальный/нераспознанный ход: фиксируем попытку и просим переходить.
+            attempts.append(rejected)
+            self._emit(
+                EVENT_ILLEGAL,
+                {
+                    "side": side,
+                    "ply": len(self._game.moves) + 1,
+                    "attempt": len(attempts),
+                    "raw": rejected.raw,
+                    "reason": rejected.reason,
+                },
+            )
+            if len(attempts) >= limit:
+                self._technical_loss(side, attempts)
+                return None
+            retry = rejected  # коррекция уйдёт в контекст следующей попытки (D-006)
+
+    def _query(self, side: Side, retry: IllegalAttempt | None) -> LLMResponse:
+        """Спросить модель за ``side`` (опц. с коррекцией ``retry``); залогировать диалог.
+
+        Модель видит самодостаточный срез ``[system, context]``; в ``GameRecord``
+        пишется per-side история (system один раз, затем пары context/assistant).
+        """
         history = self._game.messages[side]
         if not history:  # системную реплику логируем один раз на сторону
             history.append(self._system_message)
-        context = context_message(self._game, self._board)
+        context = context_message(self._game, self._board, retry=retry)
         history.append(context)
 
-        # Модель видит самодостаточный срез: статичный system + текущий контекст.
-        response = player.respond([self._system_message, context])
+        response = self._players[side].respond([self._system_message, context])
         history.append(
             MessageRecord(role="assistant", content=response.model_dump_json())
         )
+        return response
 
-        parsed = self._resolve_move(side, response)
-        return self._apply_move(side, parsed, response)
+    def _resolve_move(
+        self, response: LLMResponse
+    ) -> tuple[ParsedMove | None, IllegalAttempt | None]:
+        """Распознать ход из ответа.
 
-    def _resolve_move(self, side: Side, response: LLMResponse) -> ParsedMove:
-        """Превратить ответ модели в легальный ход или поднять ``GameRunnerError``.
-
-        Это шов для следующих задач Phase 3: ретрай нелегального хода и техническое
-        поражение (D-006), обработка ``resign`` (финализация результата). Пока их нет
-        — соответствующие ветки поднимают ошибку.
+        Возвращает ``(ParsedMove, None)`` для легального хода, иначе
+        ``(None, IllegalAttempt)`` с причиной отклонения для коррекции (D-006).
+        Доску не меняет.
         """
-        if response.resign:
-            raise GameRunnerError(
-                f"{side} заявил сдачу — обработка resign в этой задаче не реализована"
-            )
         if response.move is None:
-            raise GameRunnerError(
-                f"{side} не дал ход — ретрай/техническое поражение (D-006) "
-                "реализуются следующей задачей"
-            )
+            return None, IllegalAttempt(raw="", reason="ход не указан в ответе")
         try:
-            return parse_move(self._board, response.move)
+            parsed = parse_move(self._board, response.move)
         except MoveParseError as exc:
-            raise GameRunnerError(
-                f"{side} прислал нелегальный ход {response.move!r}: {exc.reason} — "
-                "ретрай/техническое поражение (D-006) реализуются следующей задачей"
-            ) from exc
+            return None, IllegalAttempt(raw=exc.raw, reason=exc.reason)
+        return parsed, None
 
     def _apply_move(
-        self, side: Side, parsed: ParsedMove, response: LLMResponse
+        self,
+        side: Side,
+        parsed: ParsedMove,
+        response: LLMResponse,
+        attempts: list[IllegalAttempt],
     ) -> MoveRecord:
-        """Применить ход к доске и дописать ``MoveRecord`` в лог; испустить событие."""
+        """Применить ход к доске и дописать ``MoveRecord`` в лог; испустить событие.
+
+        ``attempts`` — нелегальные попытки, предшествовавшие этому (легальному) ходу;
+        они сохраняются в ``MoveRecord.illegal_attempts`` (спека 3.5).
+        """
         fen_before = self._board.fen()
         self._board.push(parsed.move)
         fen_after = self._board.fen()
@@ -231,6 +285,7 @@ class GameRunner:
             fen_before=fen_before,
             fen_after=fen_after,
             reasoning=response.reasoning,
+            illegal_attempts=attempts,
         )
         self._game.moves.append(record)
         self._emit(
@@ -244,6 +299,17 @@ class GameRunner:
             },
         )
         return record
+
+    def _technical_loss(self, side: Side, attempts: list[IllegalAttempt]) -> None:
+        """Зафиксировать техническое поражение ``side`` (D-006): ``result``/``termination``.
+
+        Ход не сделан (легального так и не пришло); все попытки уже в истории
+        сообщений (коррекции и ответы модели) и в событиях ``EVENT_ILLEGAL``.
+        Партию завершит ``play``: установленный ``termination`` остановит цикл, а
+        итоговый ``EVENT_GAME_OVER`` понесёт ``result``/``termination`` в нагрузке.
+        """
+        self._game.result = _LOSS_RESULT[side]
+        self._game.termination = "technical_loss"
 
     def _emit(self, event_type: str, payload: dict) -> None:
         """Передать событие в ``on_event`` (если задан)."""

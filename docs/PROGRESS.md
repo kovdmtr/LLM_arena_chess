@@ -9,27 +9,27 @@
 ## Текущее состояние
 
 - **Фаза:** Phase 3 — Игровой цикл (идёт). Phase 0–2 закрыты. Готовы `ModelPlayer`,
-  системный промпт, context builder и `GameRunner` (happy path); дальше — ретрай
-  нелегального хода и техническое поражение (`feat(arena): illegal move retry and
-  technical loss`).
-- **Последняя завершённая задача:** `feat(arena): game runner core loop` —
-  `src/arena/arena/runner.py` (`GameRunner`, `GameEvent`, `GameRunnerError`,
-  `new_game_record` + константы `EVENT_*`). Главный игровой цикл: чередует стороны,
-  ведёт `Board`+`GameRecord`, шлёт события (`game_start`/`turn_start`/`move`/
-  `game_over`) через колбэк `on_event`. На каждом полуходе сторона получает
-  самодостаточный срез `[system, context]` (D-017/D-019 + спека 3.6), отвечает по
-  D-007, легальный ход применяется к доске и пишется в `MoveRecord` (FEN до/после,
-  SAN/UCI, рассуждение); per-side история сообщений логируется отдельно (system
-  один раз, затем пары context/assistant). Раннер — чистая оркестрация: позицию и
-  запись передаёт вызывающий, часов/генерации id внутри нет (детерминизм). Switch
-  для следующих задач: нелегальный/пустой ход и заявленная сдача поднимают
-  `GameRunnerError` (ретрай+техпоражение D-006 и финализация result/termination —
-  следующие коммиты); `max_plies` — защитный предел. Экспорт из `arena.arena`.
-  Тесты `tests/test_arena_runner.py` (10 шт, детский мат на `_ScriptedPlayer`).
-- **Следующая задача:** `feat(arena): illegal move retry and technical loss` из
-  `docs/TODO.md` (Phase 3) — заменить шов `_resolve_move`: коррекция нелегального
-  хода (контекст с `retry=IllegalAttempt`), счётчик попыток на ход, 3 подряд →
-  `technical_loss` (D-006); запись попыток в `MoveRecord.illegal_attempts`.
+  системный промпт, context builder, `GameRunner` (happy path + ретрай/техпоражение
+  D-006); дальше — финализация result/termination для обычных окончаний и обработка
+  `resign` (`feat(arena): game end and result/termination`).
+- **Последняя завершённая задача:** `feat(arena): illegal move retry and technical
+  loss` — в `GameRunner._play_turn` добавлен цикл ретраев (D-006): нелегальный/
+  нераспознанный ход → `IllegalAttempt` (через `core.parse_move`), модели уходит
+  коррекция в `context_message(..., retry=...)`, она ходит заново. Счётчик попыток
+  локален ходу и сбрасывается после успешного хода; `illegal_move_retries` подряд →
+  `_technical_loss` (ставит `result` = победа соперника + `termination=
+  technical_loss`, останавливает цикл). Удачные попытки складываются в
+  `MoveRecord.illegal_attempts`. Новое событие `EVENT_ILLEGAL` на каждую попытку;
+  `EVENT_GAME_OVER` теперь несёт `result`/`termination`. `_resolve_move` вернул
+  `(ParsedMove|None, IllegalAttempt|None)` вместо проброса ошибки. Тесты
+  `tests/test_arena_runner.py` (17 шт: ретрай→легальный, коррекция в контексте,
+  3-strike за обе стороны, кастомный лимит, сброс счётчика, событие на попытку,
+  result/termination в game_over).
+- **Следующая задача:** `feat(arena): game end and result/termination` из
+  `docs/TODO.md` (Phase 3) — после остановки цикла проставлять `result`/
+  `termination` из `Board.outcome()` (мат/пат/ничьи D-012) для обычных окончаний;
+  реализовать `resign` (сейчас шов поднимает `GameRunnerError`) → `termination=
+  resign`, победа соперника.
 - **Открытые вопросы:** нет (см. `docs/DECISIONS.md`).
 
 ## Как запускать / тестировать (заполнять по мере появления кода)
@@ -38,7 +38,7 @@
 - **Окружение:** пакет `arena` установлен editable в `.venv` репозитория. Запускать
   тесты/код именно через него: `\.venv\Scripts\python.exe -m pytest`
   (системный `python` пакет `arena` не видит → `ModuleNotFoundError: No module named 'arena'`).
-- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 242 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + arena runner + prompts system + prompts context (+ fixtures) + smoke).
+- Тесты: `\.venv\Scripts\python.exe -m pytest` (сейчас 249 passed: config + catalog + board + endgame + move parsing + models + pgn + pgn export + providers base + providers openai + providers anthropic + providers gemini + providers transport (кросс-провайдерный) + arena player + arena runner + prompts system + prompts context (+ fixtures) + smoke).
 - Запуск веб-UI: _TBD (`uvicorn ...`)_
 - Служебный прогон партии: _TBD (`python -m arena.cli ...`)_
 
@@ -77,3 +77,4 @@
 | 2026-06-09 | `feat(prompts): context builder`: `src/arena/prompts/context.py` (`build_context`/`context_message`) — per-turn контекст (спека 3.6) из `GameRecord`+`Board`: цвет/номер хода, FEN, легальные ходы SAN, PGN-снимок (`core.build_pgn`, без комментариев), объяснения обеих сторон, остаток подсказок, опц. инъекция подсказки (D-010) и коррекция ретрая (D-006, причина = `IllegalAttempt`); тесты `test_prompts_context.py` (19 шт); pytest зелёный (224 passed) | `085514d` | `test(prompts): context builder` |
 | 2026-06-09 | `test(prompts): context builder`: `test_prompts_context_fixtures.py` (8 шт) — фикстурные сценарии: точный блок объяснений, round-trip встроенного PGN-снимка, совпадение списка легальных ходов с доской, отслеживание очереди по префиксам, порядок секций, «подсказка+ретрай», остаток подсказок по стороне, без секретов; pytest зелёный (232 passed) | `e855a75` | `feat(arena): game runner core loop` |
 | 2026-06-09 | `feat(arena): game runner core loop`: `src/arena/arena/runner.py` (`GameRunner`/`GameEvent`/`GameRunnerError`/`new_game_record` + `EVENT_*`) — главный цикл: чередование сторон, ведение `Board`+`GameRecord`, события, самодостаточный срез `[system, context]` на ход, запись `MoveRecord` и per-side истории; нелегальный/пустой ход и resign → `GameRunnerError` (швы под D-006/финализацию); экспорт из `arena.arena`; тесты `test_arena_runner.py` (10 шт, детский мат на `_ScriptedPlayer`); pytest зелёный (242 passed) | `cf4dc34` | `feat(arena): illegal move retry and technical loss` |
+| 2026-06-09 | `feat(arena): illegal move retry and technical loss`: цикл ретраев в `_play_turn` (D-006) — нелегальный ход → `IllegalAttempt` + коррекция `context(retry=...)` + повтор; счётчик локален ходу, `illegal_move_retries` подряд → `_technical_loss` (result+`termination=technical_loss`); попытки в `MoveRecord.illegal_attempts`; событие `EVENT_ILLEGAL`, `EVENT_GAME_OVER` несёт result/termination; тесты `test_arena_runner.py` (17 шт); pytest зелёный (249 passed) | `<pending>` | `feat(arena): game end and result/termination` |

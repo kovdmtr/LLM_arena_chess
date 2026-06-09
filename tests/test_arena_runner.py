@@ -18,6 +18,7 @@ import pytest
 from arena.arena import (
     EVENT_GAME_OVER,
     EVENT_GAME_START,
+    EVENT_ILLEGAL,
     EVENT_MOVE,
     EVENT_TURN_START,
     GameEvent,
@@ -66,12 +67,16 @@ FOOLS_MATE_WHITE = ["f3", "g4"]
 FOOLS_MATE_BLACK = ["e5", "Qh4#"]
 
 
-def _runner(white_moves, black_moves, *, on_event=None, max_plies=None, **pkw):
+def _runner(
+    white_moves, black_moves, *, on_event=None, max_plies=None, settings=None, **pkw
+):
     players = {
         "white": _ScriptedPlayer("white-model", white_moves, **pkw.get("white", {})),
         "black": _ScriptedPlayer("black-model", black_moves, **pkw.get("black", {})),
     }
-    game = new_game_record(players, game_id="g1", created_at=CREATED_AT)
+    game = new_game_record(
+        players, game_id="g1", created_at=CREATED_AT, settings=settings
+    )
     runner = GameRunner(players, game, board=Board(), on_event=on_event, max_plies=max_plies)
     return runner, players, game
 
@@ -198,14 +203,97 @@ def test_max_plies_caps_the_game():
     assert not runner.board.is_game_over()
 
 
-# --- швы под следующие задачи ------------------------------------------------
+# --- ретрай нелегального хода и техническое поражение (D-006) ----------------
 
-def test_illegal_move_raises_game_runner_error():
-    # Белые присылают нелегальный ход — ретрай/техпоражение ещё не реализованы.
-    runner, _, _ = _runner(["e5"], ["e5"])  # e5 нелегален за белых из старта
-    with pytest.raises(GameRunnerError, match="нелегальный ход"):
-        runner.play()
+def test_illegal_then_legal_retries_and_records_attempt():
+    # Белые сперва шлют мусор, затем легальный ход — ретрай, попытка записана.
+    runner, _, game = _runner(["Zzz", "e4"], ["e5"], max_plies=2)
+    runner.play()
 
+    assert game.termination is None
+    assert [m.san for m in game.moves] == ["e4", "e5"]
+    attempts = game.moves[0].illegal_attempts
+    assert len(attempts) == 1
+    assert attempts[0].raw == "Zzz"
+    assert attempts[0].reason  # непустая причина для коррекции
+
+
+def test_retry_context_carries_correction_to_model():
+    # На повторном запросе модель видит коррекцию (причина отклонения, D-006).
+    runner, players, _ = _runner(["Zzz", "e4"], ["e5"], max_plies=2)
+    runner.play()
+
+    # второй запрос к белым — это повторная попытка с блоком коррекции.
+    retry_sent = players["white"].seen[1]
+    context = retry_sent[-1].content  # последний — user-контекст
+    assert "was rejected" in context
+    assert "Zzz" in context
+
+
+def test_three_illegal_attempts_lose_on_technical_grounds():
+    runner, _, game = _runner(["Zzz", "Zzz", "Zzz"], [])
+    runner.play()
+
+    assert game.termination == "technical_loss"
+    assert game.result == "0-1"  # белые проиграли → победа чёрных
+    assert game.moves == []  # легального хода так и не случилось
+    assert runner._is_over()
+
+
+def test_black_technical_loss_awards_white():
+    runner, _, game = _runner(["e4"], ["Zzz", "Zzz", "Zzz"])
+    runner.play()
+
+    assert game.termination == "technical_loss"
+    assert game.result == "1-0"
+    assert [m.san for m in game.moves] == ["e4"]  # ход белых остался в логе
+
+
+def test_technical_loss_respects_custom_retry_limit():
+    runner, _, game = _runner(
+        ["Zzz", "Zzz"], [], settings=PlayerSettings(illegal_move_retries=2)
+    )
+    runner.play()
+
+    assert game.termination == "technical_loss"
+    assert game.result == "0-1"
+
+
+def test_counter_resets_after_a_legal_move():
+    # По одной нелегальной попытке на ход, но не три подряд → партия продолжается.
+    runner, _, game = _runner(
+        ["Zzz", "e4", "Zzz", "Nf3"], ["e5", "Nc6"], max_plies=4
+    )
+    runner.play()
+
+    assert game.termination is None
+    assert [m.san for m in game.moves] == ["e4", "e5", "Nf3", "Nc6"]
+    assert len(game.moves[0].illegal_attempts) == 1  # первый ход белых
+    assert len(game.moves[2].illegal_attempts) == 1  # второй ход белых
+    assert game.moves[1].illegal_attempts == []  # ходы чёрных — без попыток
+
+
+def test_illegal_event_emitted_per_attempt():
+    events: list[GameEvent] = []
+    runner, _, _ = _runner(["Zzz", "Zzz", "Zzz"], [], on_event=events.append)
+    runner.play()
+
+    illegal = [e for e in events if e.type == EVENT_ILLEGAL]
+    assert [e.payload["attempt"] for e in illegal] == [1, 2, 3]
+    assert all(e.payload["side"] == "white" for e in illegal)
+
+
+def test_game_over_event_reports_result_and_termination():
+    events: list[GameEvent] = []
+    runner, _, _ = _runner(["Zzz", "Zzz", "Zzz"], [], on_event=events.append)
+    runner.play()
+
+    over = next(e for e in events if e.type == EVENT_GAME_OVER)
+    assert over.payload["termination"] == "technical_loss"
+    assert over.payload["result"] == "0-1"
+
+
+# --- шов под следующую задачу: resign ----------------------------------------
 
 def test_resign_raises_game_runner_error():
     # Белые сразу заявляют сдачу — обработка resign ещё не реализована.

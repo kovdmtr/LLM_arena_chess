@@ -4,6 +4,7 @@ from arena.arena.player import ModelPlayer, parse_response
 from arena.arena.runner import (
     EVENT_GAME_OVER,
     EVENT_GAME_START,
+    EVENT_ILLEGAL,
     EVENT_MOVE,
     EVENT_TURN_START,
     GameEvent,
@@ -15,6 +16,7 @@ from arena.arena.runner import (
 __all__ = [
     "EVENT_GAME_OVER",
     "EVENT_GAME_START",
+    "EVENT_ILLEGAL",
     "EVENT_MOVE",
     "EVENT_TURN_START",
     "GameEvent",
