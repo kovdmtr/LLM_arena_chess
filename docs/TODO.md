@@ -92,4 +92,4 @@
 
 ## Бэклог (после Phase 8)
 - [ ] Веб-UI для турниров (старт/наблюдение/таблица в браузере).
-- [ ] CLI-обёртка прогона партии/турнира (`python -m arena.cli …`).
+- [x] CLI-обёртка прогона партии/турнира (`python -m arena.cli …`) — команды `models`/`play`/`tournament`, переиспользуют `GameRunner`/`TournamentRunner`/`storage`; UTF-8 вывод на Windows.
