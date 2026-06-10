@@ -195,6 +195,29 @@ def test_report_shows_classification_and_eval_when_present():
     assert "-250 cp" in html
 
 
+def test_report_shows_chesscom_glyphs_for_classifications():
+    # глифы-аннотации рядом с бейджами (per-move и в ключевых моментах).
+    game = _game()
+    game.moves[0].classification = "brilliant"
+    game.moves[-1].classification = "blunder"
+    game.analysis = AnalysisSummary(
+        key_moments=[
+            KeyMoment(ply=1, classification="brilliant"),
+            KeyMoment(ply=len(game.moves), classification="blunder"),
+        ]
+    )
+    html = render_report_html(game)
+    assert 'class="glyph"' in html
+    assert "!!" in html  # brilliant
+    assert "??" in html  # blunder
+
+
+def test_report_omits_glyph_for_unmarked_moves():
+    # без классификации — ни бейджа, ни глифа.
+    html = render_report_html(_game(["e4"]))
+    assert 'class="glyph"' not in html
+
+
 # --- сводка пост-анализа ★ (AnalysisSummary) -------------------------------
 
 

@@ -61,6 +61,7 @@
     .badge.inaccuracy { background: #fef9c3; color: #854d0e; }
     .badge.mistake { background: #ffedd5; color: #9a3412; }
     .badge.blunder { background: #fee2e2; color: #991b1b; }
+    .glyph { font-weight: 700; margin-left: .25rem; color: #44403c; font-variant-ligatures: none; }
     .reasoning { margin: .5rem 0 0; color: #292524; white-space: pre-wrap; }
     .reasoning.empty { color: #a8a29e; font-style: italic; }
     .hint { margin-top: .5rem; font-size: .85rem; color: #0369a1; }
@@ -146,6 +147,7 @@
       <li data-frame="{{ km.ply }}">
         <span class="num">{{ (km.ply + 1) // 2 }}{% if km.ply % 2 == 1 %}.{% else %}...{% endif %}</span>
         <span class="badge {{ km.classification }}">{{ km.classification }}</span>
+        {% if km.classification|glyph %}<span class="glyph">{{ km.classification|glyph }}</span>{% endif %}
         {% if km.comment %}<span class="comment">{{ km.comment }}</span>{% endif %}
       </li>
       {% endfor %}
@@ -175,7 +177,7 @@
             <span class="num">{{ m.move_number }}{% if m.record.side == "white" %}.{% else %}...{% endif %}</span>
             {{ m.record.san }}
             <span class="side-tag">({{ m.record.side }})</span>
-            {% if m.record.classification %}<span class="badge {{ m.record.classification }}">{{ m.record.classification }}</span>{% endif %}
+            {% if m.record.classification %}<span class="badge {{ m.record.classification }}">{{ m.record.classification }}</span>{% if m.record.classification|glyph %}<span class="glyph">{{ m.record.classification|glyph }}</span>{% endif %}{% endif %}
             {% if m.record.engine_eval_cp is not none %}<span class="eval">{{ "%+d"|format(m.record.engine_eval_cp) }} cp</span>{% endif %}
           </div>
           {% if m.record.reasoning %}
@@ -205,7 +207,7 @@
       <li data-frame="{{ loop.index }}">
         <span class="num">{{ m.move_number }}{% if m.record.side == "white" %}.{% else %}...{% endif %}</span>
         {{ m.record.san }}
-        {% if m.record.classification %}<span class="badge {{ m.record.classification }}">{{ m.record.classification }}</span>{% endif %}
+        {% if m.record.classification %}<span class="badge {{ m.record.classification }}">{{ m.record.classification }}</span>{% if m.record.classification|glyph %}<span class="glyph">{{ m.record.classification|glyph }}</span>{% endif %}{% endif %}
       </li>
       {% endfor %}
     </ol>
