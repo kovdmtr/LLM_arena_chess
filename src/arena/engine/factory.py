@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from arena.config.settings import EngineConfig
+from arena.engine.cache import CachingEngine
 from arena.engine.stockfish import (
     EngineOpener,
     EngineUnavailableError,
@@ -29,14 +30,17 @@ def build_engine(
     *,
     depth: int | None = None,
     opener: EngineOpener | None = None,
-) -> StockfishEngine | None:
-    """Построить открытый ``StockfishEngine`` из ``config`` или вернуть ``None``.
+    cache: bool = False,
+) -> StockfishEngine | CachingEngine | None:
+    """Построить открытый движок из ``config`` или вернуть ``None``.
 
     ``None`` означает «★-фичи выключены» — либо движок отключён в конфиге
     (``enabled=false``), либо бинарник недоступен (``EngineUnavailableError`` при
     запуске). ``depth`` задаёт глубину по умолчанию (обычно ``hint_depth``; для
     пост-анализа глубину передают в ``analyze_game(depth=...)``). ``opener`` —
-    шов для тестов (подмена UCI-процесса).
+    шов для тестов (подмена UCI-процесса). ``cache=True`` оборачивает движок в
+    ``CachingEngine`` (кеш оценок по ``(fen, depth)``) — полезно при анализе многих
+    партий (турнир), где повторяются дебютные позиции.
     """
     if not config.enabled:
         return None
@@ -49,4 +53,4 @@ def build_engine(
         engine.open()
     except EngineUnavailableError:
         return None
-    return engine
+    return CachingEngine(engine) if cache else engine

@@ -79,7 +79,17 @@
 - [x] `test: full e2e run` — прогон база+★ на фейковых игроках (`test_full_e2e.py`: партия+подсказка+анализ+комментарий → game.json/PGN/report.html).
 - [x] `docs: finalize and add sample game` — пример в `examples/sample-game/` (`game.json`/`game.pgn`/`report.html`, реальный анализ Stockfish) + генератор `scripts/generate_sample_game.py`; README/ROADMAP актуализированы. **Phase 7 закрыта.**
 
-## Бэклог (после)
-- [ ] Турниры из нескольких партий, таблица результатов.
-- [ ] Экспорт нескольких партий, агрегированная статистика моделей.
-- [ ] Альтернативные движки/глубины анализа, кеш оценок позиций.
+## Phase 8 — Бэклог (расширения)
+Атомизация трёх бэклог-пунктов. Альтернативные движки/глубины анализа уже
+поддержаны (`engine.path` — любой UCI-бинарник, `engine.analysis_depth`/`hint_depth`
+в `config.yaml`); из бэклога-3 остаётся кеш оценок позиций.
+
+- [x] `feat(engine): position eval cache` — обёртка `CachingEngine` (кеш `evaluate`/`best_move` по `(fen, depth)`), drop-in, опц. в `build_engine`. _(бэклог-3)_
+- [ ] `feat(stats): aggregate model statistics across games` — `stats`-слой: `ModelStats`/`StatsTable`, `aggregate_stats(records)` (партии, W/L/D, очки, score%, средняя точность, зевки/ошибки/неточности, подсказки), загрузка записей из каталога. _(бэклог-2)_
+- [ ] `feat(report): stats report and multi-game PGN export` — `render_stats_html` + `storage.export_combined_pgn`/`export_stats_report`. _(бэклог-2)_
+- [ ] `feat(tournament): round-robin pairings and models` — модели `TournamentRecord`/`TournamentGame`, генерация пар `round_robin(models, double=…)`. _(бэклог-1)_
+- [ ] `feat(tournament): runner with standings and report` — `TournamentRunner` (фейк-тестируемый `player_factory`) проигрывает пары, сохраняет партии, считает таблицу (через `stats`), рендерит standings-отчёт. _(бэклог-1)_
+
+## Бэклог (после Phase 8)
+- [ ] Веб-UI для турниров (старт/наблюдение/таблица в браузере).
+- [ ] CLI-обёртка прогона партии/турнира (`python -m arena.cli …`).

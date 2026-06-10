@@ -27,10 +27,11 @@
   выданной подсказкой и реальной классификацией (inaccuracy + blunder→ключевой момент).
   Переписан устаревший `README.md` (был «код не написан») — quickstart, фичи, ссылка на
   пример; Phase 7 помечена закрытой в `ROADMAP.md`/`TODO.md`. До неё — full e2e.
-- **Следующая задача:** исходный план (Phase 0–7) выполнен. Дальше — только **бэклог**
-  `docs/TODO.md`: турниры из нескольких партий + таблица результатов; экспорт нескольких
-  партий + агрегированная статистика моделей; альтернативные движки/глубины + кеш оценок.
-  Берётся по запросу пользователя.
+- **Следующая задача:** **Phase 8 (бэклог) в работе.** Сделана задача 1
+  (`feat(engine): position eval cache`). Дальше по порядку `docs/TODO.md` Phase 8:
+  `feat(stats): aggregate model statistics across games` (слой `stats`), затем
+  `feat(report): stats report and multi-game PGN export`, далее две задачи турниров
+  (`round-robin pairings` + `runner with standings and report`).
 - **Примечание (среда):** установленный Starlette использует НОВУЮ сигнатуру
   `Jinja2Templates.TemplateResponse(request, name, context)` (старый порядок
   `(name, {"request": ...})` падает `TypeError: unhashable type: 'dict'`). `TestClient`
@@ -121,3 +122,4 @@
 | 2026-06-09 | `docs: finalize and add sample game` ★закалка: `scripts/generate_sample_game.py` + пример `examples/sample-game/` (game.json+PGN+report.html, реальный анализ Stockfish: детский мат, подсказка, inaccuracy+blunder); переписан `README.md` (quickstart/фичи/ссылка на пример), `examples/README.md`, Phase 7 закрыта в `ROADMAP.md`/`TODO.md`. **Phase 7 ЗАКРЫТА → Phase 0–7 завершены.** pytest зелёный (503 passed, 1 skipped) | `3559f79` | бэклог (по запросу) |
 | 2026-06-09 | `fix(engine): resolve relative engine path` — в веб-партиях не было ★-анализа: `engine.path="stockfish"` искался в PATH (нет), бинарник в `tools/bin/stockfish.exe`; subprocess на Windows не запускает относительный путь с `/` (WinError 2) → `build_engine`→None → `analysis: null`. `StockfishEngine._resolve_launch_path` делает путь-с-разделителем абсолютным (bare-имя → PATH как раньше); `config.yaml engine.path = tools/bin/stockfish.exe`. Тесты +3; проверено вживую (eval работает). pytest (513 passed, 1 skipped) | `e67e433` | — |
 | 2026-06-09 | `feat(web): link to games archive from main menu` — на стартовой странице кнопка «Архив партий» (→ `GET /games`) рядом с «Сыграть партию»; стиль `button-secondary`; тест индекса (+ссылки на `/games/new` и `/games`). pytest (513 passed, 1 skipped) | `d06c954` | — |
+| 2026-06-10 | `feat(engine): position eval cache` ★ (Phase 8, бэклог-3): `engine/cache.py` — `CachingEngine`, прозрачная drop-in обёртка над движком: кеш `evaluate`/`best_move` по `(fen, depth)` (разная глубина — отдельные записи), `hits`/`misses`/`cache_info`/`clear_cache`, делегирование жизненного цикла (`open`/`close`/контекстный менеджер) внутреннему движку; `build_engine(..., cache=True)` оборачивает (полезно в турнире — повтор дебютных позиций); экспорт из `arena.engine`; **Phase 8 начата**; тесты `test_engine_cache.py` (7); pytest зелёный (513 passed, 1 skipped) | _pending_ | `feat(stats): aggregate model statistics` |

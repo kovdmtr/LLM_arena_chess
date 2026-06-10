@@ -1,5 +1,6 @@
 """★ Обёртка над Stockfish (UCI): подсказки и оценки. Опциональна."""
 
+from arena.engine.cache import CachingEngine
 from arena.engine.factory import build_engine
 from arena.engine.stockfish import (
     DEFAULT_DEPTH,
@@ -10,6 +11,7 @@ from arena.engine.stockfish import (
 
 __all__ = [
     "DEFAULT_DEPTH",
+    "CachingEngine",
     "EngineOpener",
     "EngineUnavailableError",
     "StockfishEngine",
