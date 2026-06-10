@@ -88,7 +88,7 @@
 - [x] `feat(stats): aggregate model statistics across games` — `stats`-слой: `ModelStats`/`StatsTable`, `aggregate_stats(records)` (партии, W/L/D, очки, score%, средняя точность, зевки/ошибки/неточности, подсказки), загрузка записей из каталога. _(бэклог-2)_
 - [x] `feat(report): stats report and multi-game PGN export` — `render_stats_html` + `storage.export_combined_pgn`/`export_stats_report`. _(бэклог-2)_
 - [x] `feat(tournament): round-robin pairings and models` — модели `TournamentRecord`/`TournamentGame`, генерация пар `round_robin(models, double=…)`. _(бэклог-1)_
-- [ ] `feat(tournament): runner with standings and report` — `TournamentRunner` (фейк-тестируемый `player_factory`) проигрывает пары, сохраняет партии, считает таблицу (через `stats`), рендерит standings-отчёт. _(бэклог-1)_
+- [x] `feat(tournament): runner with standings and report` — `TournamentRunner` (фейк-тестируемый `player_factory`) проигрывает пары, сохраняет партии, считает таблицу (через `stats`), рендерит standings-отчёт. **Phase 8 закрыта.** _(бэклог-1)_
 
 ## Бэклог (после Phase 8)
 - [ ] Веб-UI для турниров (старт/наблюдение/таблица в браузере).

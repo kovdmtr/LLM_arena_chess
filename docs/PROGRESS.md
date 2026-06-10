@@ -8,7 +8,11 @@
 
 ## Текущее состояние
 
-- **Фаза:** **Phase 0–7 ЗАКРЫТЫ — проект функционально завершён.** Phase 7 (закалка)
+- **Фаза:** **Phase 0–8 ЗАКРЫТЫ — проект завершён, включая бэклог.** Phase 8
+  (расширения) закрыта целиком: кеш оценок (`CachingEngine`), агрегированная
+  статистика моделей (слой `stats`), stats-отчёт + многопартийный PGN, и турниры
+  round-robin (`tournament`: модели + пары + `TournamentRunner` со standings-отчётом).
+  Ниже — описание Phase 0–7. Phase 7 (закалка)
   закрыта целиком: `feat(providers): retry with backoff` (D-022),
   `feat(obs): logging with key masking` (D-023), `chore: graceful degradation without
   engine` (D-024, +движок в веб-партии), `test: full e2e run` (база+★ на фейках),
@@ -27,11 +31,10 @@
   выданной подсказкой и реальной классификацией (inaccuracy + blunder→ключевой момент).
   Переписан устаревший `README.md` (был «код не написан») — quickstart, фичи, ссылка на
   пример; Phase 7 помечена закрытой в `ROADMAP.md`/`TODO.md`. До неё — full e2e.
-- **Следующая задача:** **Phase 8 (бэклог) в работе.** Сделаны задачи 1–4
-  (`position eval cache`, `aggregate model statistics`, `stats report + multi-game PGN`,
-  `tournament round-robin pairings and models`). Осталась **последняя** задача Phase 8:
-  `feat(tournament): runner with standings and report` (прогон пар + standings через
-  `stats` + отчёт). После неё Phase 8 закрыта.
+- **Следующая задача:** **Phase 8 ЗАКРЫТА — все запланированные задачи (Phase 0–8)
+  выполнены.** Остаётся только пост-бэклог `docs/TODO.md`: веб-UI для турниров
+  (старт/наблюдение/таблица в браузере) и CLI-обёртка прогона партии/турнира
+  (`python -m arena.cli …`). Берётся по запросу пользователя.
 - **Примечание (среда):** установленный Starlette использует НОВУЮ сигнатуру
   `Jinja2Templates.TemplateResponse(request, name, context)` (старый порядок
   `(name, {"request": ...})` падает `TypeError: unhashable type: 'dict'`). `TestClient`
@@ -125,4 +128,5 @@
 | 2026-06-10 | `feat(engine): position eval cache` ★ (Phase 8, бэклог-3): `engine/cache.py` — `CachingEngine`, прозрачная drop-in обёртка над движком: кеш `evaluate`/`best_move` по `(fen, depth)` (разная глубина — отдельные записи), `hits`/`misses`/`cache_info`/`clear_cache`, делегирование жизненного цикла (`open`/`close`/контекстный менеджер) внутреннему движку; `build_engine(..., cache=True)` оборачивает (полезно в турнире — повтор дебютных позиций); экспорт из `arena.engine`; **Phase 8 начата**; тесты `test_engine_cache.py` (7); pytest зелёный (513 passed, 1 skipped) | `1659a43` | `feat(stats): aggregate model statistics` |
 | 2026-06-10 | `feat(stats): aggregate model statistics across games` ★ (Phase 8, бэклог-2): слой `stats` — `aggregate_stats(records)→StatsTable` (строки `ModelStats` по `model_id`, одна модель = одна строка по обеим сторонам): партии/W-L-D/очки (1/½/0)/score%/средняя точность (из ★-анализа)/зевки-ошибки-неточности/подсказки; учитываются только завершённые партии (`*` не даёт очков, но участник в таблице со `games=0`); сортировка по очкам→score%→имени; `load_records(games_root)` грузит все `game.json` (битые пропускает); экспорт из `arena.stats`; тесты `test_stats_aggregate.py` (10); pytest зелёный (523 passed, 1 skipped) | `c06953d` | `feat(report): stats report and multi-game PGN export` |
 | 2026-06-10 | `feat(report): stats report and multi-game PGN export` ★ (Phase 8, бэклог-2): `report/stats_template.py` (`render_stats_html`) + шаблон `stats.html.j2` — self-contained standings-таблица из `StatsTable` (ранг/модель/партии/W-Н-П/очки/score%/точность/ошибки/подсказки, инлайн-CSS, экранирование, пустой случай → заглушка); storage `export_combined_pgn(records, target)` (многопартийный PGN в один файл, `Round` 1..N, перечитывается python-chess) и `export_stats_report(table, target)`. Цикл `storage→report→stats` разорван ленивым импортом storage в `stats.load_records`; экспорт из `arena.report`/`arena.storage`; тесты `test_stats_report.py` (7); pytest зелёный (530 passed, 1 skipped) | `b240ade` | `feat(tournament): round-robin pairings and models` |
-| 2026-06-10 | `feat(tournament): round-robin pairings and models` ★ (Phase 8, бэклог-1): слой `tournament` — модели `TournamentGame` (тур/белые/чёрные по `model_id`, опц. `game_id`/`result`) и `TournamentRecord` (участники `PlayerInfo`, флаг `double`, расписание); `round_robin(models, double=…)` круговым методом (n−1 туров, нечёт → bye, **жадный баланс цветов** → у каждого поровну белых/чёрных; double = второй круг с переменой цвета → идеальный баланс); `new_tournament_record(participants, …)` собирает запись с расписанием; экспорт из `arena.tournament`; тесты `test_tournament_pairings.py` (10); pytest зелёный (540 passed, 1 skipped) | _pending_ | `feat(tournament): runner with standings and report` |
+| 2026-06-10 | `feat(tournament): round-robin pairings and models` ★ (Phase 8, бэклог-1): слой `tournament` — модели `TournamentGame` (тур/белые/чёрные по `model_id`, опц. `game_id`/`result`) и `TournamentRecord` (участники `PlayerInfo`, флаг `double`, расписание); `round_robin(models, double=…)` круговым методом (n−1 туров, нечёт → bye, **жадный баланс цветов** → у каждого поровну белых/чёрных; double = второй круг с переменой цвета → идеальный баланс); `new_tournament_record(participants, …)` собирает запись с расписанием; экспорт из `arena.tournament`; тесты `test_tournament_pairings.py` (10); pytest зелёный (540 passed, 1 skipped) | `4df7787` | `feat(tournament): runner with standings and report` |
+| 2026-06-10 | `feat(tournament): runner with standings and report` ★ (Phase 8, бэклог-1): `tournament/runner.py` — `TournamentRunner` синхронно проигрывает расписание `GameRunner`-ом (шов `player_factory(side, PlayerInfo)`; ★-движок опц. как в веб — подсказки+`analyze_game`, деградация D-008), пишет `game_id`/`result` обратно в `TournamentGame`, сохраняет артефакты партий (`save_game`/PGN/HTML), сворачивает сыгранное в `StatsTable` через `stats.aggregate_stats`; `export_tournament(outcome, dir)` пишет `tournament.json`+`standings.html`+`tournament.pgn`; экспорт из `arena.tournament`; **Phase 8 ЗАКРЫТА → Phase 0–8 завершены.** тесты `test_tournament_runner.py` (7); pytest зелёный (547 passed, 1 skipped) | _pending_ | пост-бэклог (по запросу) |
