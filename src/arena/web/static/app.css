@@ -34,6 +34,7 @@ body {
   font-weight: 600;
 }
 .button:hover { filter: brightness(1.05); }
+.button-secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); margin-left: .5rem; }
 .game-form { display: grid; gap: 1rem; max-width: 28rem; margin-top: 1rem; }
 .game-form .field { display: grid; gap: .35rem; }
 .game-form label { font-weight: 600; }

@@ -35,6 +35,9 @@ def test_index_renders_html_page():
     # шаблон расширяет base.html → есть DOCTYPE и подключение статики.
     assert "<!DOCTYPE html>" in resp.text
     assert "/static/app.css" in resp.text
+    # главное меню ведёт и на новую партию, и на архив партий.
+    assert 'href="/games/new"' in resp.text
+    assert 'href="/games"' in resp.text
 
 
 def test_static_css_is_served():
