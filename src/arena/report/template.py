@@ -21,6 +21,7 @@ from __future__ import annotations
 from jinja2 import Environment, PackageLoader, select_autoescape
 from markupsafe import Markup
 
+from arena.analysis import classification_glyph
 from arena.models import GameRecord
 from arena.report.board_image import DEFAULT_SIZE, render_board_svg, render_move_svg
 
@@ -42,6 +43,8 @@ _ENV = Environment(
     trim_blocks=True,
     lstrip_blocks=True,
 )
+# Фильтр для аннотационных глифов классификации (``blunder`` → ``??`` и т.п.).
+_ENV.filters["glyph"] = classification_glyph
 
 
 def _move_views(game: GameRecord, *, include_boards: bool, board_size: int, orientation):

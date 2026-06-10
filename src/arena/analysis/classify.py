@@ -74,3 +74,25 @@ def classify_cpl(cpl: int, thresholds: ClassificationThresholds) -> Classificati
     if cpl >= thresholds.inaccuracy_cp:
         return "inaccuracy"
     return "good"
+
+
+# Аннотационные глифы в стиле chess.com/PGN-нотации для классов качества хода.
+# ``book`` — дебютная теория, отдельным глифом не помечается (пустая строка).
+CLASSIFICATION_GLYPHS: dict[Classification, str] = {
+    "brilliant": "!!",
+    "good": "!",
+    "inaccuracy": "?!",
+    "mistake": "?",
+    "blunder": "??",
+    "book": "",
+}
+
+
+def classification_glyph(classification: Classification | None) -> str:
+    """Вернуть аннотационный глиф класса (``!!``/``!``/``?!``/``?``/``??``).
+
+    ``None``, ``book`` и неизвестные значения дают пустую строку (глиф не рисуется).
+    """
+    if classification is None:
+        return ""
+    return CLASSIFICATION_GLYPHS.get(classification, "")
