@@ -25,12 +25,6 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from arena.models import GameRecord, Side
-from arena.storage import (
-    DEFAULT_GAMES_ROOT,
-    GAME_JSON_NAME,
-    StorageError,
-    load_game,
-)
 
 # Результаты, считающиеся завершённой партией (учитываются в таблице).
 _DECISIVE = {"1-0", "0-1", "1/2-1/2"}
@@ -141,15 +135,24 @@ def _record_result(winner: ModelStats, loser: ModelStats) -> None:
     loser.losses += 1
 
 
-def load_records(
-    games_root: str | Path = DEFAULT_GAMES_ROOT,
-) -> list[GameRecord]:
+def load_records(games_root: str | Path | None = None) -> list[GameRecord]:
     """Загрузить все ``GameRecord`` из ``games_root`` (по папкам с ``game.json``).
 
     Битые/нечитаемые записи пропускаются (не валят агрегацию). Возвращает список,
-    отсортированный по имени папки; пустой, если каталога нет.
+    отсортированный по имени папки; пустой, если каталога нет. ``storage``
+    импортируется лениво, чтобы не образовать цикл ``storage→report→stats``.
     """
-    root = Path(games_root)
+    # Ленивый импорт: ``arena.storage`` тянет ``arena.report``, который (через
+    # таблицу статистики) ссылается на ``arena.stats`` — импорт на уровне модуля
+    # замкнул бы цикл.
+    from arena.storage import (
+        DEFAULT_GAMES_ROOT,
+        GAME_JSON_NAME,
+        StorageError,
+        load_game,
+    )
+
+    root = Path(DEFAULT_GAMES_ROOT if games_root is None else games_root)
     if not root.is_dir():
         return []
     records: list[GameRecord] = []

@@ -8,6 +8,7 @@ from arena.report.board_image import (
     render_move_svg,
     svg_to_png,
 )
+from arena.report.stats_template import render_stats_html
 from arena.report.template import render_report_html
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "render_board_svg",
     "render_move_svg",
     "render_report_html",
+    "render_stats_html",
     "svg_to_png",
 ]

@@ -13,11 +13,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from arena.core import build_pgn
 from arena.models import GameRecord
-from arena.report import render_report_html
+from arena.report import render_report_html, render_stats_html
+
+if TYPE_CHECKING:
+    from arena.stats import StatsTable
 
 # Имя канонического файла партии внутри её папки (D-004).
 GAME_JSON_NAME = "game.json"
@@ -118,6 +123,46 @@ def export_report(
     html = render_report_html(record, include_boards=include_boards)
     _atomic_write(target, html)
     return target
+
+
+def export_combined_pgn(
+    records: Iterable[GameRecord],
+    target: str | Path,
+    *,
+    include_reasoning: bool = True,
+) -> Path:
+    """Записать многопартийный PGN из ``records`` в файл ``target`` (атомарно).
+
+    PGN-файл может содержать несколько партий подряд (lichess/chess.com читают
+    их по очереди) — каждая собирается через ``core.build_pgn`` и разделяется
+    пустой строкой. ``Round`` проставляется по порядку (1, 2, …) для
+    прослеживаемости. Возвращает путь к записанному файлу; пустой ``records``
+    даёт пустой файл.
+    """
+    games = [
+        build_pgn(record, round_=str(index), include_reasoning=include_reasoning)
+        for index, record in enumerate(records, start=1)
+    ]
+    target_path = Path(target)
+    text = "\n\n".join(games)
+    _atomic_write(target_path, (text + "\n") if text else "")
+    return target_path
+
+
+def export_stats_report(
+    table: "StatsTable",
+    target: str | Path,
+    *,
+    title: str = "Статистика моделей",
+) -> Path:
+    """Записать self-contained HTML-таблицу статистики из ``table`` в ``target``.
+
+    HTML собирается через ``report.render_stats_html`` (инлайн-CSS, без внешних
+    файлов) и пишется атомарно. Возвращает путь к записанному файлу.
+    """
+    target_path = Path(target)
+    _atomic_write(target_path, render_stats_html(table, title=title))
+    return target_path
 
 
 def load_game(source: str | Path) -> GameRecord:
