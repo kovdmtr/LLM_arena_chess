@@ -13,11 +13,14 @@ import chess
 import chess.engine
 import pytest
 
+import os
+
 from arena.engine import (
     DEFAULT_DEPTH,
     EngineUnavailableError,
     StockfishEngine,
 )
+from arena.engine.stockfish import _resolve_launch_path
 from arena.models import HintRecord
 
 _START_FEN = chess.STARTING_FEN
@@ -202,6 +205,26 @@ def test_engine_error_on_launch_raises_engine_unavailable():
     engine = StockfishEngine(opener=opener)
     with pytest.raises(EngineUnavailableError):
         engine.evaluate(_START_FEN)
+
+
+# --- разрешение пути запуска --------------------------------------------------
+
+def test_resolve_launch_path_keeps_bare_name_for_path_lookup():
+    # bare-имя без разделителей ищется в PATH — не трогаем.
+    assert _resolve_launch_path("stockfish") == "stockfish"
+    assert _resolve_launch_path("stockfish.exe") == "stockfish.exe"
+
+
+def test_resolve_launch_path_makes_relative_file_absolute():
+    # путь с разделителем делаем абсолютным (Windows не запускает относительный с /).
+    resolved = _resolve_launch_path("tools/bin/stockfish.exe")
+    assert os.path.isabs(resolved)
+    assert resolved.replace("\\", "/").endswith("tools/bin/stockfish.exe")
+
+
+def test_resolve_launch_path_keeps_absolute_absolute():
+    abs_path = os.path.abspath("tools/bin/stockfish.exe")
+    assert _resolve_launch_path(abs_path) == os.path.abspath(abs_path)
 
 
 # --- интеграция с реальным Stockfish (skip, если бинарника нет) --------------

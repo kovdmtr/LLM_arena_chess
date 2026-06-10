@@ -11,7 +11,7 @@ arena:
 
 engine:
   enabled: true
-  path: "stockfish"              # путь к бинарнику или имя в PATH
+  path: "tools/bin/stockfish.exe"   # путь к бинарнику (относит. корня репо) или имя в PATH; нет файла → ★ деградируют (D-008)
   analysis_depth: 18
   hint_depth: 18
 

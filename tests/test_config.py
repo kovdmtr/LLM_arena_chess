@@ -21,7 +21,7 @@ def test_default_config_yaml_parses():
     assert cfg.arena.illegal_move_retries == 3
     assert cfg.arena.hints_per_player == 3
     assert cfg.arena.auto_claim_draws is True
-    assert cfg.engine.path == "stockfish"
+    assert cfg.engine.path == "tools/bin/stockfish.exe"
     assert cfg.output.games_dir == "games"
     assert {m.id for m in cfg.models} == {"gpt-4o", "claude-opus-4-8", "gemini-2.5-pro"}
     assert cfg.providers["openai"].api_key_env == "OPENAI_API_KEY"
