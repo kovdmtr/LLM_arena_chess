@@ -306,3 +306,33 @@ def test_report_has_no_secrets():
     html = render_report_html(_game()).lower()
     assert "api_key" not in html
     assert "sk-" not in html
+
+
+# --- фича «стратегия»: план и бейдж статуса в отчёте ------------------------
+
+
+def test_report_shows_move_plan_and_status_badge():
+    game = _game(["e4"])
+    game.moves[0].strategy = "Захватить центр и рокировать"
+    game.moves[0].plan_status = "adapt"
+    html = render_report_html(game)
+    assert "Захватить центр и рокировать" in html
+    assert "План:" in html
+    # Бейдж статуса с классом для подсветки.
+    assert "status-adapt" in html
+    assert "adapt" in html
+
+
+def test_report_omits_plan_when_strategy_empty():
+    html = render_report_html(_game(["e4"]))  # strategy="" по умолчанию
+    assert "План:" not in html
+    # Рендеренного бейджа нет (строка `.plan-status` есть только в CSS).
+    assert 'class="plan-status' not in html
+
+
+def test_report_escapes_html_in_strategy():
+    game = _game(["e4"])
+    game.moves[0].strategy = "<b>evil</b>"
+    html = render_report_html(game)
+    assert "<b>evil</b>" not in html
+    assert "&lt;b&gt;evil" in html
