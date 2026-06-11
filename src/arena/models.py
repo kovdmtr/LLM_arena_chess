@@ -140,11 +140,15 @@ class PlayerSettings(BaseModel):
     список легальных ходов. По умолчанию ``False`` — модель ходит «вслепую» по
     FEN/PGN, а легальность проверяется уже **после** ответа (ретрай при нелегальном
     ходе, D-006). ``True`` возвращает прежнее поведение (список-подсказку в промпте).
+    ``strategy_enabled`` (фича «стратегия») включает rolling-план: модель пишет
+    ``strategy``/``plan_status``, а план её прошлого хода ре-инъектируется ей же.
+    По умолчанию включено.
     """
 
     illegal_move_retries: int = 3
     hints_per_player: int = 3
     include_legal_moves: bool = False
+    strategy_enabled: bool = True
 
 
 class PlayerAnalysis(BaseModel):

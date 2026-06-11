@@ -13,6 +13,7 @@ from arena.config.settings import (
     RetryConfig,
     Secrets,
     Settings,
+    StrategyConfig,
 )
 
 __all__ = [
@@ -30,4 +31,5 @@ __all__ = [
     "RetryConfig",
     "Secrets",
     "Settings",
+    "StrategyConfig",
 ]

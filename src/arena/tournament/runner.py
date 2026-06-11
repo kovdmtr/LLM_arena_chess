@@ -28,7 +28,7 @@ from arena.analysis import ClassificationThresholds, analyze_game
 from arena.arena import GameRunner, new_game_record
 from arena.config import AnalysisConfig
 from arena.engine import EngineUnavailableError
-from arena.models import GameRecord, PlayerInfo, Side
+from arena.models import GameRecord, PlayerInfo, PlayerSettings, Side
 from arena.stats import StatsTable, aggregate_stats
 from arena.storage import (
     DEFAULT_GAMES_ROOT,
@@ -88,6 +88,7 @@ class TournamentRunner:
         engine_factory: EngineFactory | None = None,
         analysis_config: AnalysisConfig | None = None,
         analysis_depth: int | None = None,
+        player_settings: PlayerSettings | None = None,
     ) -> None:
         self._record = record
         self._player_factory = player_factory
@@ -99,6 +100,9 @@ class TournamentRunner:
         self._engine_factory = engine_factory
         self._analysis_config = analysis_config
         self._analysis_depth = analysis_depth
+        # Срез настроек партии (лимиты/флаги, в т.ч. фича «стратегия»); ``None`` →
+        # дефолтные ``PlayerSettings`` (стратегия включена по умолчанию).
+        self._player_settings = player_settings
 
     def _default_game_id(self, tgame: TournamentGame, index: int) -> str:
         """Стабильный id партии: ``<tournament>-g<NN>`` (порядок в расписании)."""
@@ -136,6 +140,7 @@ class TournamentRunner:
             players,  # type: ignore[arg-type]  # утиный тип игрока (.info/.respond)
             game_id=game_id,
             created_at=self._clock(),
+            settings=self._player_settings,
         )
         engine = self._engine_factory() if self._engine_factory else None
         try:

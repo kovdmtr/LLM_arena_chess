@@ -31,7 +31,7 @@ from arena.analysis import ClassificationThresholds, analyze_game
 from arena.arena import GameEvent, GameRunner, ModelPlayer, new_game_record
 from arena.config import AnalysisConfig, ResolvedModel
 from arena.engine import EngineUnavailableError
-from arena.models import GameRecord, PlayerInfo, Side
+from arena.models import GameRecord, PlayerInfo, PlayerSettings, Side
 from arena.obs import get_logger
 from arena.providers import create_provider
 from arena.storage import (
@@ -142,12 +142,16 @@ class GameManager:
         engine_factory: EngineFactory | None = None,
         analysis_config: AnalysisConfig | None = None,
         analysis_depth: int | None = None,
+        player_settings: PlayerSettings | None = None,
     ) -> None:
         self._player_factory = player_factory
         self._games_root = games_root
         self._max_plies = max_plies
         self._persist = persist
         self._clock = clock
+        # Срез настроек партии из конфига (в т.ч. фича «стратегия»); ``None`` →
+        # дефолтные ``PlayerSettings``.
+        self._player_settings = player_settings
         # ★ Движок и пост-анализ (Phase 7). ``engine_factory`` строит на партию
         # движок-или-``None`` (единый путь деградации, см. ``engine.build_engine``):
         # ``None`` → партия играется без подсказок/анализа (D-008). ``analysis_config``
@@ -184,7 +188,10 @@ class GameManager:
         players = {side: self._player_factory(side, resolved[side]) for side in _SIDES}
         game_id = game_id or uuid.uuid4().hex[:12]
         record = new_game_record(
-            players, game_id=game_id, created_at=self._clock()
+            players,
+            game_id=game_id,
+            created_at=self._clock(),
+            settings=self._player_settings,
         )
         session = GameSession(
             id=game_id, players=dict(record.players), record=record

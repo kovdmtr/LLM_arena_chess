@@ -21,6 +21,17 @@ DEFAULT_CONFIG_PATH = _REPO_ROOT / "config.yaml"
 DEFAULT_ENV_FILE = _REPO_ROOT / ".env"
 
 
+class StrategyConfig(BaseModel):
+    """Фича «стратегия»: модель ведёт приватный rolling-план между ходами.
+
+    При ``enabled`` системный промпт описывает поля ``strategy``/``plan_status``, а в
+    контекст хода инъектируется план предыдущего хода стороны — партия играется как
+    связная игра, а не оценка позиции с нуля. По умолчанию включено.
+    """
+
+    enabled: bool = True
+
+
 class ArenaConfig(BaseModel):
     """Параметры игрового цикла."""
 
@@ -28,6 +39,25 @@ class ArenaConfig(BaseModel):
     hints_per_player: int = 3
     auto_claim_draws: bool = True
     include_legal_moves: bool = False  # класть ли список легальных ходов в промпт (D-021)
+    strategy: StrategyConfig = Field(default_factory=StrategyConfig)
+
+    def to_player_settings(self) -> "PlayerSettings":  # noqa: F821 — строковая аннотация
+        """Спроецировать конфиг арены в ``PlayerSettings`` (срез, хранимый в партии).
+
+        Мост ``config.yaml`` → ``GameRecord.settings``: переносит лимиты и флаги, под
+        которыми играется партия (попытки, подсказки, список легальных ходов D-021,
+        фича «стратегия»). ``auto_claim_draws`` — свойство доски, не игрока, поэтому
+        здесь не переносится. ``PlayerSettings`` импортируется лениво (``arena.models``
+        не зависит от ``config`` — не замыкаем).
+        """
+        from arena.models import PlayerSettings
+
+        return PlayerSettings(
+            illegal_move_retries=self.illegal_move_retries,
+            hints_per_player=self.hints_per_player,
+            include_legal_moves=self.include_legal_moves,
+            strategy_enabled=self.strategy.enabled,
+        )
 
 
 class EngineConfig(BaseModel):

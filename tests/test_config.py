@@ -21,10 +21,53 @@ def test_default_config_yaml_parses():
     assert cfg.arena.illegal_move_retries == 3
     assert cfg.arena.hints_per_player == 3
     assert cfg.arena.auto_claim_draws is True
+    assert cfg.arena.strategy.enabled is True  # фича «стратегия» включена в дефолтном конфиге
     assert cfg.engine.path == "tools/bin/stockfish.exe"
     assert cfg.output.games_dir == "games"
     assert {m.id for m in cfg.models} == {"gpt-4o", "claude-opus-4-8", "gemini-2.5-pro"}
     assert cfg.providers["openai"].api_key_env == "OPENAI_API_KEY"
+
+
+# --- Фича «стратегия»: конфиг и мост в PlayerSettings ----------------------
+
+
+def test_strategy_enabled_by_default_when_omitted(tmp_path):
+    path = _write_config(tmp_path, "arena:\n  hints_per_player: 2\n")
+    cfg = AppConfig.from_yaml(path)
+    assert cfg.arena.strategy.enabled is True
+
+
+def test_strategy_can_be_disabled_in_config(tmp_path):
+    path = _write_config(
+        tmp_path, "arena:\n  strategy:\n    enabled: false\n"
+    )
+    cfg = AppConfig.from_yaml(path)
+    assert cfg.arena.strategy.enabled is False
+
+
+def test_to_player_settings_maps_arena_fields(tmp_path):
+    path = _write_config(
+        tmp_path,
+        """
+        arena:
+          illegal_move_retries: 5
+          hints_per_player: 1
+          include_legal_moves: true
+          strategy:
+            enabled: false
+        """,
+    )
+    settings = AppConfig.from_yaml(path).arena.to_player_settings()
+    assert settings.illegal_move_retries == 5
+    assert settings.hints_per_player == 1
+    assert settings.include_legal_moves is True
+    assert settings.strategy_enabled is False
+
+
+def test_to_player_settings_defaults_enable_strategy():
+    from arena.config import ArenaConfig
+
+    assert ArenaConfig().to_player_settings().strategy_enabled is True
 
 
 def test_config_typed_fields(tmp_path):

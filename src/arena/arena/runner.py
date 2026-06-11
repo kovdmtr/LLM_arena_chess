@@ -176,6 +176,7 @@ class GameRunner:
             hints_per_player=game.settings.hints_per_player,
             illegal_move_retries=game.settings.illegal_move_retries,
             include_legal_moves=game.settings.include_legal_moves,
+            include_strategy=game.settings.strategy_enabled,
         )
 
     @property

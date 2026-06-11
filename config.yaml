@@ -8,6 +8,9 @@ arena:
   auto_claim_draws: true         # авто-ничья при 50-ходовом/троекратном повторении
   include_legal_moves: false     # класть ли список легальных ходов в промпт; false —
                                  # модель ходит по FEN/PGN, легальность проверяется после хода (D-021)
+  strategy:
+    enabled: true                # фича «стратегия»: модель ведёт приватный rolling-план
+                                 # (strategy/plan_status), план прошлого хода возвращается ей же
 
 engine:
   enabled: true

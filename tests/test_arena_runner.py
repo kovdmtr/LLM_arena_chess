@@ -187,6 +187,26 @@ def test_legal_moves_list_present_when_enabled():
     assert "the full list of legal moves" in system.content
 
 
+def test_strategy_section_in_system_prompt_by_default():
+    # PlayerSettings.strategy_enabled=True по умолчанию → промпт описывает стратегию.
+    runner, players, _ = _runner(FOOLS_MATE_WHITE, FOOLS_MATE_BLACK)
+    runner.play()
+    system, _ = players["white"].seen[0]
+    assert '"strategy"' in system.content
+    assert '"plan_status"' in system.content
+
+
+def test_strategy_section_absent_when_disabled():
+    runner, players, _ = _runner(
+        FOOLS_MATE_WHITE,
+        FOOLS_MATE_BLACK,
+        settings=PlayerSettings(strategy_enabled=False),
+    )
+    runner.play()
+    system, _ = players["white"].seen[0]
+    assert '"strategy"' not in system.content
+
+
 # --- события -----------------------------------------------------------------
 
 def test_emits_events_in_order():

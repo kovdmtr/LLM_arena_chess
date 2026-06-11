@@ -99,7 +99,7 @@
 
 - [x] `feat(models): strategy and plan_status fields` — поля в `LLMResponse`/`MoveRecord` + `PlanStatus` Literal.
 - [x] `feat(prompts): strategy/plan_status in response protocol` — `STRATEGY_KEYS`, гейтед-вариант промпта (`include_strategy`: reasoning↔strategy + контракт непрерывности + приватность), `parse_response` читает `strategy`/`plan_status` мягко (нормализация статуса, дефолт `start`).
-- [ ] `feat(config): strategy settings` — `ArenaConfig.strategy` + `config.yaml` + `PlayerSettings`, проброс в `system`/`context`/`runner`.
+- [x] `feat(config): strategy settings` — `StrategyConfig`/`ArenaConfig.strategy` + `config.yaml` + `PlayerSettings.strategy_enabled` (дефолт on); мост `ArenaConfig.to_player_settings()` (config.yaml теперь реально драйвит настройки партии — закрыт латентный пробел), проброс в `system` (раннер) + entry-points (web/cli/tournament).
 - [ ] `feat(prompts): inject current plan into context` — блок текущего плана из последнего хода стороны, первый ход, приватность, под флагом.
 - [ ] `feat(arena): persist strategy on move` — `_apply_move` пишет `strategy`/`plan_status`; план хода N виден стороне на ходу N+2.
 - [ ] `feat(report): show move plan and status badge` — строка плана + бейдж статуса в отчёте.

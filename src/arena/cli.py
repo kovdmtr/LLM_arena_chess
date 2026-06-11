@@ -181,6 +181,7 @@ def _play_game(
         players,  # type: ignore[arg-type]  # утиный тип игрока (.info/.respond)
         game_id=game_id,
         created_at=clock(),
+        settings=settings.config.arena.to_player_settings(),
     )
     engine = engine_factory()
     try:
@@ -276,6 +277,7 @@ def cmd_tournament(
             analysis_config=settings.config.analysis,
             analysis_depth=settings.config.engine.analysis_depth,
             persist=not args.no_persist,
+            player_settings=settings.config.arena.to_player_settings(),
         ).run()
     except ProviderError as exc:
         out(f"Сбой провайдера: {exc}")

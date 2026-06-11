@@ -242,6 +242,7 @@ def _get_manager(app: FastAPI) -> GameManager:
             engine_factory=lambda: build_engine(engine_cfg, depth=engine_cfg.hint_depth),
             analysis_config=settings.config.analysis,
             analysis_depth=engine_cfg.analysis_depth,
+            player_settings=settings.config.arena.to_player_settings(),
         )
         app.state.game_manager = manager
     return manager
