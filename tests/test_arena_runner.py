@@ -207,6 +207,54 @@ def test_strategy_section_absent_when_disabled():
     assert '"strategy"' not in system.content
 
 
+class _StrategyPlayer:
+    """Игрок, заявляющий стратегию на каждом ходу (для проверки её возврата)."""
+
+    def __init__(self, model_id, scripted):
+        self._info = PlayerInfo(model_id=model_id, provider="fake", display_name=model_id)
+        self._scripted = list(scripted)  # список (move, strategy, plan_status)
+        self._idx = 0
+        self.seen: list[list] = []
+
+    @property
+    def info(self) -> PlayerInfo:
+        return self._info
+
+    def respond(self, messages):
+        self.seen.append(list(messages))
+        move, strategy, status = self._scripted[self._idx]
+        self._idx += 1
+        return LLMResponse(
+            reasoning="r", move=move, strategy=strategy, plan_status=status
+        )
+
+
+def test_plan_is_persisted_and_returned_to_same_side_next_turn():
+    players = {
+        "white": _StrategyPlayer(
+            "white-model",
+            [("e4", "PLAN-ALPHA", "start"), ("Nf3", "PLAN-BETA", "continue")],
+        ),
+        "black": _StrategyPlayer(
+            "black-model",
+            [("e5", "BLACK-SECRET", "start"), ("Nc6", "BLACK-SECRET-2", "continue")],
+        ),
+    }
+    game = new_game_record(players, game_id="g1", created_at=CREATED_AT)
+    GameRunner(players, game, board=Board(), max_plies=4).play()
+
+    # План записан в MoveRecord первого хода белых.
+    assert game.moves[0].strategy == "PLAN-ALPHA"
+    assert game.moves[0].plan_status == "start"
+
+    # На втором ходу белых их план первого хода вернулся в контекст (приватно).
+    second_white_context = players["white"].seen[1][-1].content
+    assert "PLAN-ALPHA" in second_white_context
+    assert 'you marked it "start"' in second_white_context
+    # План чёрных в контексте белых не светится.
+    assert "BLACK-SECRET" not in second_white_context
+
+
 # --- события -----------------------------------------------------------------
 
 def test_emits_events_in_order():

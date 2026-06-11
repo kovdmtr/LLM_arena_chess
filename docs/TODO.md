@@ -101,7 +101,7 @@
 - [x] `feat(prompts): strategy/plan_status in response protocol` — `STRATEGY_KEYS`, гейтед-вариант промпта (`include_strategy`: reasoning↔strategy + контракт непрерывности + приватность), `parse_response` читает `strategy`/`plan_status` мягко (нормализация статуса, дефолт `start`).
 - [x] `feat(config): strategy settings` — `StrategyConfig`/`ArenaConfig.strategy` + `config.yaml` + `PlayerSettings.strategy_enabled` (дефолт on); мост `ArenaConfig.to_player_settings()` (config.yaml теперь реально драйвит настройки партии — закрыт латентный пробел), проброс в `system` (раннер) + entry-points (web/cli/tournament).
 - [x] `feat(prompts): inject current plan into context` — приватный блок плана из последнего хода стороны (`_plan_section`), первый ход → приглашение, статус в напоминании, финальная строка с ключами стратегии; под флагом `include_strategy`, проброшен из раннера.
-- [ ] `feat(arena): persist strategy on move` — `_apply_move` пишет `strategy`/`plan_status`; план хода N виден стороне на ходу N+2.
+- [x] `feat(arena): persist strategy on move` — `_apply_move` пишет `strategy`/`plan_status` в `MoveRecord`; e2e-тест: план хода N записан и возвращён стороне на ходу N+2 (приватно).
 - [ ] `feat(report): show move plan and status badge` — строка плана + бейдж статуса в отчёте.
 - [ ] (опц.) `feat(analysis): plan-adherence commentary` — комментарий учитывает следование плану.
 

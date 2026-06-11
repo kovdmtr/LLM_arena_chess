@@ -385,6 +385,11 @@ class GameRunner:
             fen_before=fen_before,
             fen_after=fen_after,
             reasoning=response.reasoning,
+            # Фича «стратегия»: план, заявленный на этом ходу, и его статус — чтобы
+            # вернуть его этой же стороне на следующем ходу (D-0xx). Пуст/``start``,
+            # когда фича выключена или модель план не прислала.
+            strategy=response.strategy,
+            plan_status=response.plan_status,
             illegal_attempts=attempts,
             hint_used=hint is not None,
             hint=hint,
