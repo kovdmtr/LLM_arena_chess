@@ -299,6 +299,7 @@ class GameRunner:
             retry=retry,
             hint=hint,
             include_legal_moves=self._game.settings.include_legal_moves,
+            include_strategy=self._game.settings.strategy_enabled,
         )
         history.append(context)
 

@@ -198,3 +198,46 @@ def test_context_message_wraps_user_role():
     assert isinstance(msg, MessageRecord)
     assert msg.role == "user"
     assert msg.content == build_context(game, board)
+
+
+# --- Фича «стратегия»: инъекция приватного плана ---------------------------
+
+
+def test_plan_section_absent_when_strategy_off():
+    text = build_context(_game(), Board())  # include_strategy=False по умолчанию
+    assert "Your plan" not in text
+
+
+def test_plan_first_move_prompts_to_set_one():
+    text = build_context(_game(), Board(), include_strategy=True)
+    assert "this is your first move" in text
+    assert '"strategy"' in text  # просит сформулировать план
+    # Финальная строка-напоминание перечисляет поля стратегии.
+    assert '"plan_status"' in text
+
+
+def test_plan_injects_own_previous_strategy_and_status():
+    board, moves = _play([("e4", "open"), ("e5", "symmetry")])
+    moves[0].strategy = "Castle kingside, then press the d5 square."
+    moves[0].plan_status = "start"
+    # После e4 e5 снова ход белых — им возвращается их же план.
+    text = build_context(_game(moves=moves), board, include_strategy=True)
+    assert "Castle kingside, then press the d5 square." in text
+    assert 'you marked it "start"' in text
+
+
+def test_plan_is_private_opponent_strategy_not_shown():
+    board, moves = _play([("e4", "open"), ("e5", "symmetry")])
+    moves[0].strategy = "white-plan-visible"
+    moves[1].strategy = "BLACK-SECRET-PLAN"  # план соперника (чёрных)
+    # Ход белых: их план виден, план чёрных — нет.
+    text = build_context(_game(moves=moves), board, include_strategy=True)
+    assert "white-plan-visible" in text
+    assert "BLACK-SECRET-PLAN" not in text
+
+
+def test_reply_line_has_strategy_keys_only_when_enabled():
+    on = build_context(_game(), Board(), include_strategy=True)
+    off = build_context(_game(), Board())
+    assert '"strategy", "plan_status"' in on
+    assert '"strategy"' not in off

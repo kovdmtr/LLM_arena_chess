@@ -36,6 +36,7 @@ def build_context(
     retry: IllegalAttempt | None = None,
     hint: HintRecord | None = None,
     include_legal_moves: bool = True,
+    include_strategy: bool = False,
 ) -> str:
     """Собрать текст контекста хода для стороны, чья сейчас очередь.
 
@@ -44,8 +45,10 @@ def build_context(
     задан) добавляет блок коррекции нелегального хода; ``hint`` (если задан) —
     инъекцию подсказки движка. ``include_legal_moves`` (D-021) управляет тем, кладём
     ли в контекст список легальных ходов (``False`` — модель ходит «вслепую» по
-    FEN/PGN, легальность проверяется после ответа). Возвращает готовый текст без
-    завершающего перевода строки.
+    FEN/PGN, легальность проверяется после ответа). ``include_strategy`` (фича
+    «стратегия») инъектирует **приватный** план предыдущего хода этой стороны —
+    модель продолжает свой замысел, а не оценивает позицию заново. Возвращает
+    готовый текст без завершающего перевода строки.
     """
     side: Side = board.turn  # type: ignore[assignment]
     sections: list[str] = []
@@ -59,6 +62,9 @@ def build_context(
         sections.append("Legal moves (SAN):\n" + " ".join(board.legal_moves_san()))
     sections.append("Game so far (PGN):\n" + build_pgn(game, include_reasoning=False))
     sections.append(_history_section(game))
+    if include_strategy:
+        # Приватный план этой стороны (только её собственный — соперник его не видит).
+        sections.append(_plan_section(game, side))
     sections.append(f"Hints remaining: {_hints_remaining(game, side)}")
 
     if hint is not None:
@@ -66,10 +72,7 @@ def build_context(
     if retry is not None:
         sections.append(_retry_section(retry, include_legal_moves))
 
-    sections.append(
-        'Reply with one JSON object: '
-        '{"reasoning", "move", "request_hint", "resign"}.'
-    )
+    sections.append(_reply_line(include_strategy))
     return "\n\n".join(sections)
 
 
@@ -80,12 +83,66 @@ def context_message(
     retry: IllegalAttempt | None = None,
     hint: HintRecord | None = None,
     include_legal_moves: bool = True,
+    include_strategy: bool = False,
 ) -> MessageRecord:
     """Обернуть ``build_context`` в ``MessageRecord`` с ролью ``user``."""
     content = build_context(
-        game, board, retry=retry, hint=hint, include_legal_moves=include_legal_moves
+        game,
+        board,
+        retry=retry,
+        hint=hint,
+        include_legal_moves=include_legal_moves,
+        include_strategy=include_strategy,
     )
     return MessageRecord(role="user", content=content)
+
+
+def _reply_line(include_strategy: bool) -> str:
+    """Финальная строка-напоминание о ключах JSON-ответа (с/без полей стратегии)."""
+    if include_strategy:
+        return (
+            "Reply with one JSON object: "
+            '{"reasoning", "move", "strategy", "plan_status", '
+            '"request_hint", "resign"}.'
+        )
+    return (
+        "Reply with one JSON object: "
+        '{"reasoning", "move", "request_hint", "resign"}.'
+    )
+
+
+def _last_own_move(game: GameRecord, side: Side):
+    """Последний (по времени) ход этой стороны или ``None`` (ещё не ходила)."""
+    for record in reversed(game.moves):
+        if record.side == side:
+            return record
+    return None
+
+
+def _plan_section(game: GameRecord, side: Side) -> str:
+    """Блок приватного плана этой стороны (фича «стратегия»).
+
+    Берёт ``strategy``/``plan_status`` последнего хода стороны и просит продолжить,
+    скорректировать или отбросить замысел. Если своего хода ещё не было (или план не
+    записан) — приглашает сформулировать план впервые. План соперника не показывается.
+    """
+    last = _last_own_move(game, side)
+    if last is not None and last.strategy.strip():
+        return (
+            f'Your plan from your previous move (private, you marked it "{last.plan_status}"):\n'
+            f"«{last.strategy.strip()}»\n"
+            "Given the opponent's reply, keep, adapt, or abandon this plan; make a "
+            'move that serves it, then output your updated "strategy" and "plan_status".'
+        )
+    reason = (
+        "this is your first move"
+        if last is None
+        else "you have not recorded a plan yet"
+    )
+    return (
+        "Your plan (private, carried across your turns):\n"
+        f"(none — {reason}; state your plan for the coming moves in \"strategy\".)"
+    )
 
 
 def _hints_remaining(game: GameRecord, side: Side) -> int:
