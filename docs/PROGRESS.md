@@ -31,10 +31,12 @@
   выданной подсказкой и реальной классификацией (inaccuracy + blunder→ключевой момент).
   Переписан устаревший `README.md` (был «код не написан») — quickstart, фичи, ссылка на
   пример; Phase 7 помечена закрытой в `ROADMAP.md`/`TODO.md`. До неё — full e2e.
-- **Следующая задача:** **Phase 0–8 выполнены; из пост-бэклога сделана CLI-обёртка**
-  (`arena models/play/tournament`). Остаётся единственный пункт пост-бэклога
-  `docs/TODO.md`: веб-UI для турниров (старт/наблюдение/таблица в браузере).
-  Берётся по запросу пользователя.
+- **Следующая задача:** **В работе новая фича «стратегия/план»** (непрерывность
+  замысла, см. раздел в `docs/TODO.md`). Сделана задача 1
+  (`feat(models): strategy and plan_status fields`). Дальше по порядку: протокол
+  ответа (prompts) → конфиг → инъекция плана в контекст → запись в раннере → отчёт.
+  Решения зафиксированы: только последний план, приватно, по умолчанию вкл.,
+  статус continue/adapt/abandon. (Пост-бэклог — веб-UI турниров — позже, по запросу.)
 - **Примечание (среда):** установленный Starlette использует НОВУЮ сигнатуру
   `Jinja2Templates.TemplateResponse(request, name, context)` (старый порядок
   `(name, {"request": ...})` падает `TypeError: unhashable type: 'dict'`). `TestClient`
@@ -134,3 +136,4 @@
 | 2026-06-10 | `feat(tournament): round-robin pairings and models` ★ (Phase 8, бэклог-1): слой `tournament` — модели `TournamentGame` (тур/белые/чёрные по `model_id`, опц. `game_id`/`result`) и `TournamentRecord` (участники `PlayerInfo`, флаг `double`, расписание); `round_robin(models, double=…)` круговым методом (n−1 туров, нечёт → bye, **жадный баланс цветов** → у каждого поровну белых/чёрных; double = второй круг с переменой цвета → идеальный баланс); `new_tournament_record(participants, …)` собирает запись с расписанием; экспорт из `arena.tournament`; тесты `test_tournament_pairings.py` (10); pytest зелёный (540 passed, 1 skipped) | `4df7787` | `feat(tournament): runner with standings and report` |
 | 2026-06-10 | `feat(tournament): runner with standings and report` ★ (Phase 8, бэклог-1): `tournament/runner.py` — `TournamentRunner` синхронно проигрывает расписание `GameRunner`-ом (шов `player_factory(side, PlayerInfo)`; ★-движок опц. как в веб — подсказки+`analyze_game`, деградация D-008), пишет `game_id`/`result` обратно в `TournamentGame`, сохраняет артефакты партий (`save_game`/PGN/HTML), сворачивает сыгранное в `StatsTable` через `stats.aggregate_stats`; `export_tournament(outcome, dir)` пишет `tournament.json`+`standings.html`+`tournament.pgn`; экспорт из `arena.tournament`; **Phase 8 ЗАКРЫТА → Phase 0–8 завершены.** тесты `test_tournament_runner.py` (7); pytest зелёный (547 passed, 1 skipped) | `7a9baef` | пост-бэклог (по запросу) |
 | 2026-06-10 | `feat(cli): play and tournament commands` (пост-бэклог): `arena.cli` — команды `models` (каталог+ключи), `play WHITE BLACK` (одна партия через `GameRunner`+★, артефакты в `games/<id>/`), `tournament M… [--double]` (round-robin через `TournamentRunner`, таблица + `games/tournaments/<id>/`); тонкая обёртка над готовыми слоями (веб не трогает), швы `player_factory`/`engine_factory`/`clock`/`out` для тестов; **фикс**: вывод переведён на UTF-8 (`reconfigure`), иначе печать кириллицы/значков роняла процесс на Windows-консоли (`cp1252`). Проверено вживую (`arena models`). тесты `test_cli.py` (12); pytest зелёный (559 passed, 1 skipped) | `ab3e0c4` | веб-UI турниров (по запросу) |
+| 2026-06-10 | `feat(models): strategy and plan_status fields` (фича «стратегия», задача 1/6): поля `strategy: str`/`plan_status: PlanStatus` в `LLMResponse` и `MoveRecord`; новый Literal `PlanStatus` (start/continue/adapt/abandon), экспорт из `arena`; дефолты пусты/`start` → обратная совместимость (старые game.json/тесты целы); тесты `test_models.py` (+4, дефолты/round-trip/валидация Literal); pytest зелёный (568 passed, 1 skipped) | _pending_ | `feat(prompts): strategy/plan_status in response protocol` |

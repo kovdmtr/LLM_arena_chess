@@ -39,6 +39,11 @@ Classification = Literal[
     "book", "brilliant", "good", "inaccuracy", "mistake", "blunder"
 ]
 
+# Статус стратегического плана относительно прошлого хода стороны (фича «стратегия»).
+# ``start`` — первый план партии (прошлого плана нет); далее модель помечает, как
+# новый план соотносится с предыдущим: продолжает / корректирует / отбрасывает.
+PlanStatus = Literal["start", "continue", "adapt", "abandon"]
+
 
 class LLMResponse(BaseModel):
     """Разобранный ответ модели по протоколу D-007.
@@ -51,6 +56,11 @@ class LLMResponse(BaseModel):
 
     reasoning: str = ""
     move: str | None = None
+    # Фича «стратегия»: приватный rolling-план на ближайшие ходы (``strategy``) и его
+    # статус относительно прошлого плана (``plan_status``). Пусты/``start`` по
+    # умолчанию — когда фича выключена или модель их не прислала.
+    strategy: str = ""
+    plan_status: PlanStatus = "start"
     request_hint: bool = False
     resign: bool = False
 
@@ -96,6 +106,11 @@ class MoveRecord(BaseModel):
     fen_before: str
     fen_after: str
     reasoning: str = ""
+    # Фича «стратегия»: план, сформулированный на этом ходу, и его статус (D-0xx).
+    # Прикреплён к ходу → «текущий план стороны» = ``strategy`` её последнего хода.
+    # Пуст/``start``, когда фича выключена.
+    strategy: str = ""
+    plan_status: PlanStatus = "start"
     illegal_attempts: list[IllegalAttempt] = Field(default_factory=list)
     hint_used: bool = False
     hint: HintRecord | None = None

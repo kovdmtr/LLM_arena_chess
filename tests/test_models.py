@@ -39,6 +39,22 @@ def test_llm_response_accepts_full_payload():
     assert resp.request_hint is True
 
 
+def test_llm_response_strategy_defaults_and_payload():
+    # Дефолты фичи «стратегия»: план пуст, статус — start (прошлого плана нет).
+    assert LLMResponse().strategy == ""
+    assert LLMResponse().plan_status == "start"
+    resp = LLMResponse(
+        move="Nf3", strategy="развить фигуры, рокировать в короткую", plan_status="adapt"
+    )
+    assert resp.strategy == "развить фигуры, рокировать в короткую"
+    assert resp.plan_status == "adapt"
+
+
+def test_llm_response_plan_status_is_constrained():
+    with pytest.raises(ValidationError):
+        LLMResponse(plan_status="give-up")
+
+
 # --- MessageRecord -----------------------------------------------------------
 
 
@@ -82,6 +98,22 @@ def test_move_record_analysis_fields_default_to_none():
     assert move.hint is None
     assert move.engine_eval_cp is None
     assert move.classification is None
+
+
+def test_move_record_strategy_defaults_and_roundtrip():
+    # Без фичи «стратегия» поля пусты/start; round-trip JSON сохраняет их.
+    move = _move()
+    assert move.strategy == "" and move.plan_status == "start"
+
+    planned = _move(strategy="давить на f7", plan_status="continue")
+    restored = MoveRecord.model_validate_json(planned.model_dump_json())
+    assert restored.strategy == "давить на f7"
+    assert restored.plan_status == "continue"
+
+
+def test_move_record_plan_status_is_constrained():
+    with pytest.raises(ValidationError):
+        _move(plan_status="winning")
 
 
 def test_move_record_ply_must_be_positive():

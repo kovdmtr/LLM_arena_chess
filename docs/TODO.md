@@ -90,6 +90,21 @@
 - [x] `feat(tournament): round-robin pairings and models` — модели `TournamentRecord`/`TournamentGame`, генерация пар `round_robin(models, double=…)`. _(бэклог-1)_
 - [x] `feat(tournament): runner with standings and report` — `TournamentRunner` (фейк-тестируемый `player_factory`) проигрывает пары, сохраняет партии, считает таблицу (через `stats`), рендерит standings-отчёт. **Phase 8 закрыта.** _(бэклог-1)_
 
+## Фича: стратегия/план (непрерывность замысла)
+ИИ на каждом ходу формулирует **приватный rolling-план** (`strategy`) и статус
+`plan_status` (start/continue/adapt/abandon); план его последнего хода
+ре-инъектируется ему же на следующем ходу — партия играется как связная игра, а не
+оценка позиции с нуля. Решения: только последний план; приватно (соперник не видит);
+включено по умолчанию; статус continue/adapt/abandon. См. дизайн в сессии / `DECISIONS.md`.
+
+- [x] `feat(models): strategy and plan_status fields` — поля в `LLMResponse`/`MoveRecord` + `PlanStatus` Literal.
+- [ ] `feat(prompts): strategy/plan_status in response protocol` — `RESPONSE_KEYS`, абзац промпта (reasoning↔strategy + контракт непрерывности), `parse_response` (мягко, дефолт `start`).
+- [ ] `feat(config): strategy settings` — `ArenaConfig.strategy` + `config.yaml` + `PlayerSettings`, проброс в `system`/`context`/`runner`.
+- [ ] `feat(prompts): inject current plan into context` — блок текущего плана из последнего хода стороны, первый ход, приватность, под флагом.
+- [ ] `feat(arena): persist strategy on move` — `_apply_move` пишет `strategy`/`plan_status`; план хода N виден стороне на ходу N+2.
+- [ ] `feat(report): show move plan and status badge` — строка плана + бейдж статуса в отчёте.
+- [ ] (опц.) `feat(analysis): plan-adherence commentary` — комментарий учитывает следование плану.
+
 ## Бэклог (после Phase 8)
 - [ ] Веб-UI для турниров (старт/наблюдение/таблица в браузере).
 - [x] CLI-обёртка прогона партии/турнира (`python -m arena.cli …`) — команды `models`/`play`/`tournament`, переиспользуют `GameRunner`/`TournamentRunner`/`storage`; UTF-8 вывод на Windows.
