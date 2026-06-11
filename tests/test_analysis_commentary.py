@@ -256,3 +256,41 @@ def test_mate_eval_is_rendered_as_forced_mate():
     user = build_commentary_prompt(game, move, moment)[1].content
 
     assert "forced mate for Black" in user
+
+
+# --- фича «стратегия»: учёт плана в комментарии (D-025) ---------------------
+
+
+def test_prompt_includes_plan_and_previous_plan():
+    game = _game_with_moments([(3, "blunder")])
+    # Белые: план на 1-м ходу и новый (продолжение) на 3-м (ключевой момент Qh5).
+    game.moves[0].strategy = "attack the f7 square early"
+    game.moves[2].strategy = "go for a quick mate on f7"
+    game.moves[2].plan_status = "continue"
+    moment = game.analysis.key_moments[0]
+
+    user = build_commentary_prompt(game, game.moves[2], moment)[1].content
+
+    assert "attack the f7 square early" in user  # прежний план стороны
+    assert "go for a quick mate on f7" in user  # план этого хода
+    assert '"continue"' in user  # статус плана
+    assert "followed or changed that plan" in user  # просьба оценить следование
+
+
+def test_prompt_omits_plan_lines_when_strategy_disabled():
+    # По умолчанию (стратегия пуста) блок плана не добавляется — промпт прежний.
+    game = _game_with_moments([(3, "blunder")])
+    moment = game.analysis.key_moments[0]
+    user = build_commentary_prompt(game, game.moves[2], moment)[1].content
+    assert "plan" not in user.lower()
+
+
+def test_previous_plan_is_side_specific():
+    # План соперника (чёрных) не утекает в блок «прежний план» белых.
+    game = _game_with_moments([(3, "blunder")])
+    game.moves[1].strategy = "BLACK-PLAN"  # ход чёрных (ply2)
+    game.moves[2].strategy = "white-current"  # ход белых (ply3)
+    moment = game.analysis.key_moments[0]
+    user = build_commentary_prompt(game, game.moves[2], moment)[1].content
+    assert "white-current" in user
+    assert "BLACK-PLAN" not in user

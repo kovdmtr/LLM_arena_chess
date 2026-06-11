@@ -38,10 +38,13 @@ _SYSTEM_PROMPT = (
     "You are a concise chess commentator. You will be given one move from a game "
     "between two engines/LLMs that a post-game analysis flagged as notable "
     "(a brilliant move, a mistake, or a blunder), together with the engine's "
-    "evaluation, its preferred move when available, and the player's own stated "
-    "reasoning. Write ONE short sentence (at most ~30 words) explaining, for a "
-    "general chess audience, why the move is notable. Be factual and specific; "
-    "do not use markdown, lists, or quotes. Output only the sentence."
+    "evaluation, its preferred move when available, the player's own stated "
+    "reasoning, and — when available — the strategic plan the player was following "
+    "and whether this move continued, adapted, or abandoned it. Write ONE short "
+    "sentence (at most ~30 words) explaining, for a general chess audience, why the "
+    "move is notable; if a plan is given, note whether the move was consistent with "
+    "it. Be factual and specific; do not use markdown, lists, or quotes. Output only "
+    "the sentence."
 )
 
 
@@ -138,12 +141,43 @@ def build_commentary_prompt(
         lines.append(f'The player\'s stated reasoning was: "{reasoning}"')
     else:
         lines.append("The player gave no reasoning.")
+
+    # Фича «стратегия» (D-025): если у стороны был план и/или на этом ходу заявлен
+    # новый — добавляем контекст замысла, чтобы комментарий оценил следование плану.
+    # Когда фича выключена (планы пусты) — блок не добавляется, промпт прежний.
+    prev_plan = _previous_plan(game, move)
+    this_plan = (move.strategy or "").strip()
+    if prev_plan:
+        lines.append(f'Before this move the player\'s plan was: "{prev_plan}"')
+    if this_plan:
+        lines.append(
+            f'On this move the player marked the plan "{move.plan_status}" '
+            f'and stated: "{this_plan}"'
+        )
+    if prev_plan or this_plan:
+        lines.append("If relevant, note whether the move followed or changed that plan.")
+
     lines.append("Explain in one sentence why this move is notable.")
 
     return [
         MessageRecord(role="system", content=_SYSTEM_PROMPT),
         MessageRecord(role="user", content="\n".join(lines)),
     ]
+
+
+def _previous_plan(game: GameRecord, move: MoveRecord) -> str | None:
+    """План (``strategy``) предыдущего хода **этой же** стороны, или ``None``.
+
+    Это замысел, с которым сторона входила в данный ход (D-025) — на его фоне видно,
+    продолжила ли модель план или сменила курс.
+    """
+    previous: str | None = None
+    for record in game.moves:
+        if record.ply >= move.ply:
+            break
+        if record.side == move.side and record.strategy.strip():
+            previous = record.strategy.strip()
+    return previous
 
 
 def _format_eval_white(eval_cp: int | None) -> str | None:

@@ -103,7 +103,7 @@
 - [x] `feat(prompts): inject current plan into context` — приватный блок плана из последнего хода стороны (`_plan_section`), первый ход → приглашение, статус в напоминании, финальная строка с ключами стратегии; под флагом `include_strategy`, проброшен из раннера.
 - [x] `feat(arena): persist strategy on move` — `_apply_move` пишет `strategy`/`plan_status` в `MoveRecord`; e2e-тест: план хода N записан и возвращён стороне на ходу N+2 (приватно).
 - [x] `feat(report): show move plan and status badge` — строка «План: …» + бейдж статуса (start/continue/adapt/abandon) в плеере отчёта; экранирование. **Фича завершена (D-025).**
-- [ ] (опц.) `feat(analysis): plan-adherence commentary` — комментарий учитывает следование плану.
+- [x] (опц.) `feat(analysis): plan-adherence commentary` — промпт комментария несёт прежний план стороны + `plan_status`/`strategy` хода и просит оценить, следовал ли ход плану; мягкая деградация при выключенной фиче.
 
 ## Бэклог (после Phase 8)
 - [ ] Веб-UI для турниров (старт/наблюдение/таблица в браузере).
