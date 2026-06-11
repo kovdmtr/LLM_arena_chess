@@ -12,7 +12,12 @@ import pytest
 
 from arena.arena import parse_response
 from arena.models import MessageRecord
-from arena.prompts import RESPONSE_KEYS, build_system_prompt, system_message
+from arena.prompts import (
+    RESPONSE_KEYS,
+    STRATEGY_KEYS,
+    build_system_prompt,
+    system_message,
+)
 
 
 def test_response_keys_are_the_protocol_keys():
@@ -93,3 +98,43 @@ def test_no_secrets_or_keys_leaked():
     prompt = build_system_prompt().lower()
     assert "api_key" not in prompt
     assert "sk-" not in prompt
+
+
+# --- Фича «стратегия»: include_strategy ------------------------------------
+
+
+def test_strategy_off_by_default_keeps_prompt_unchanged():
+    # По умолчанию (фича выключена) промпт идентичен и не упоминает strategy.
+    prompt = build_system_prompt()
+    assert '"strategy"' not in prompt
+    assert '"plan_status"' not in prompt
+
+
+def test_strategy_on_describes_extra_keys_and_continuity():
+    prompt = build_system_prompt(include_strategy=True)
+    for key in STRATEGY_KEYS:
+        assert f'"{key}"' in prompt
+    # Контракт непрерывности и приватность плана проговорены.
+    assert "reminded of this plan" in prompt
+    assert "not shown to" in prompt
+    # Допустимые статусы перечислены.
+    for status in ("start", "continue", "adapt", "abandon"):
+        assert status in prompt
+
+
+def test_strategy_on_example_has_six_keys_and_round_trips():
+    prompt = build_system_prompt(include_strategy=True)
+    start = prompt.rindex("{")
+    obj = json.loads(prompt[start:])
+    assert set(obj) == set(RESPONSE_KEYS) | set(STRATEGY_KEYS)
+    # Тот же парсер разбирает пример и извлекает план/статус.
+    parsed = parse_response(prompt)
+    assert parsed.move == "Nf3"
+    assert parsed.strategy  # непустой план в примере
+    assert parsed.plan_status == "start"
+
+
+def test_strategy_prompt_has_no_unfilled_placeholders():
+    prompt = build_system_prompt(include_strategy=True)
+    for placeholder in ("{strategy_section}", "{strategy_keys}", "{example}"):
+        assert placeholder not in prompt

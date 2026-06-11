@@ -20,6 +20,11 @@ from arena.models import MessageRecord
 # промпта и тестов. Совпадают с ключами, которые разбирает ``parse_response``.
 RESPONSE_KEYS: tuple[str, ...] = ("reasoning", "move", "request_hint", "resign")
 
+# Доп. ключи фичи «стратегия» — добавляются в протокол, когда она включена
+# (``include_strategy=True``). ``parse_response`` читает их всегда (мягко), но
+# промпт описывает только при включённой фиче, чтобы не менять базовое поведение.
+STRATEGY_KEYS: tuple[str, ...] = ("strategy", "plan_status")
+
 # Условные фрагменты промпта под `include_legal_moves` (D-021): с/без списка
 # легальных ходов. Подставляются в шаблон вместе с лимитами партии.
 _LEGAL_MOVES_ON = {
@@ -34,6 +39,37 @@ _LEGAL_MOVES_OFF = {
     "correction_detail": "the reason",
     "strike_tail": "so make sure your move is legal before you answer.",
 }
+
+# Фрагменты фичи «стратегия» (контракт непрерывности). Подставляются, когда
+# ``include_strategy=True``; иначе все три пусты и промпт не меняется.
+_STRATEGY_SECTION = """
+
+Strategy (you are playing a continuous game, not scoring a fresh position):
+- Besides your move you keep a PLAN — your intentions for the next several moves \
+(pawn structure, king safety, targets, piece maneuvers). The plan is private: it is \
+NOT shown to your opponent.
+- Keep "reasoning" (why THIS move now) separate from "strategy" (the multi-move plan \
+this move serves). Keep the plan short: 1-3 sentences.
+- On your next turn you will be reminded of this plan. Continue it, or consciously \
+adapt or abandon it in response to your opponent, and say which in "plan_status"."""
+
+_STRATEGY_KEYS_TEXT = """
+  - "strategy": string — your private plan for the next few moves, carried across \
+turns and not shown to the opponent.
+  - "plan_status": string — one of "start", "continue", "adapt", "abandon": how this \
+plan relates to your previous one (use "start" on your first move)."""
+
+# Пример ответа: базовый (4 ключа) и с полями стратегии (6 ключей).
+_EXAMPLE_BASE = (
+    '{"reasoning": "Develop the knight and fight for the center.", '
+    '"move": "Nf3", "request_hint": false, "resign": false}'
+)
+_EXAMPLE_STRATEGY = (
+    '{"reasoning": "Develop the knight and fight for the center.", '
+    '"move": "Nf3", '
+    '"strategy": "Finish development, castle kingside, then press the d5 square.", '
+    '"plan_status": "start", "request_hint": false, "resign": false}'
+)
 
 # Шаблон промпта. Плейсхолдеры подставляются из настроек партии; сам текст
 # статичен в пределах одной игры (пригоден для prompt caching, D-017).
@@ -60,7 +96,7 @@ context on your next turn. Once your hints are used up, requesting more has no e
 
 Resigning:
 - Set "resign" to true only to voluntarily concede the game. Use it sparingly, in a \
-clearly lost position.
+clearly lost position.{strategy_section}
 
 Response format (strict):
 - Reply with EXACTLY ONE JSON object and nothing else — no markdown fences, no prose \
@@ -68,13 +104,12 @@ around it. The object has these keys:
   - "reasoning": string — a brief explanation of your choice (used for the game log \
 and shown to your opponent).
   - "move": string — your move in SAN or UCI, taken from the legal moves. Use null \
-only when you are resigning or only requesting a hint.
+only when you are resigning or only requesting a hint.{strategy_keys}
   - "request_hint": boolean — true to spend one engine hint, otherwise false.
   - "resign": boolean — true to resign, otherwise false.
 
 Example of a normal move:
-{{"reasoning": "Develop the knight and fight for the center.", "move": "Nf3", \
-"request_hint": false, "resign": false}}"""
+{example}"""
 
 
 def build_system_prompt(
@@ -82,6 +117,7 @@ def build_system_prompt(
     hints_per_player: int = 3,
     illegal_move_retries: int = 3,
     include_legal_moves: bool = True,
+    include_strategy: bool = False,
 ) -> str:
     """Собрать текст системного промпта под лимиты партии.
 
@@ -90,11 +126,18 @@ def build_system_prompt(
     статичным (кэшируемым, D-017). ``include_legal_moves`` (D-021) переключает
     формулировки: с ним промпт обещает список легальных ходов в контексте, без него
     — требует, чтобы модель сама подобрала легальный ход (проверка после ответа).
-    Возвращает готовый текст без завершающего перевода строки.
+    ``include_strategy`` (фича «стратегия») добавляет описание полей ``strategy``/
+    ``plan_status`` и контракт непрерывности; при ``False`` (по умолчанию) промпт
+    идентичен прежнему. Возвращает готовый текст без завершающего перевода строки.
     """
     variant = _LEGAL_MOVES_ON if include_legal_moves else _LEGAL_MOVES_OFF
     return _TEMPLATE.format(
-        hints=hints_per_player, retries=illegal_move_retries, **variant
+        hints=hints_per_player,
+        retries=illegal_move_retries,
+        strategy_section=_STRATEGY_SECTION if include_strategy else "",
+        strategy_keys=_STRATEGY_KEYS_TEXT if include_strategy else "",
+        example=_EXAMPLE_STRATEGY if include_strategy else _EXAMPLE_BASE,
+        **variant,
     )
 
 
@@ -103,6 +146,7 @@ def system_message(
     hints_per_player: int = 3,
     illegal_move_retries: int = 3,
     include_legal_moves: bool = True,
+    include_strategy: bool = False,
 ) -> MessageRecord:
     """Обёртка ``build_system_prompt`` в ``MessageRecord`` с ролью ``system``.
 
@@ -112,5 +156,6 @@ def system_message(
         hints_per_player=hints_per_player,
         illegal_move_retries=illegal_move_retries,
         include_legal_moves=include_legal_moves,
+        include_strategy=include_strategy,
     )
     return MessageRecord(role="system", content=content)

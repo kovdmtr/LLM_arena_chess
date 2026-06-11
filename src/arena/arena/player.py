@@ -28,9 +28,15 @@ _REASONING_KEYS = ("reasoning",)
 _MOVE_KEYS = ("move",)
 _HINT_KEYS = ("request_hint",)
 _RESIGN_KEYS = ("resign",)
+# Поля фичи «стратегия» — читаем всегда (мягко); пусто/``start`` без них.
+_STRATEGY_KEYS = ("strategy",)
+_PLAN_STATUS_KEYS = ("plan_status",)
 
 # Строковые значения, трактуемые как «истина» (модель иногда шлёт строку/число).
 _TRUTHY_STRINGS = frozenset({"true", "yes", "y", "1"})
+
+# Допустимые значения ``plan_status``; всё иное (или отсутствие) → ``start``.
+_PLAN_STATUSES = frozenset({"start", "continue", "adapt", "abandon"})
 
 
 class ModelPlayer:
@@ -98,6 +104,8 @@ def parse_response(text: str) -> LLMResponse:
     return LLMResponse(
         reasoning=_as_str(_first_key(payload, _REASONING_KEYS)),
         move=_as_move(_first_key(payload, _MOVE_KEYS)),
+        strategy=_as_str(_first_key(payload, _STRATEGY_KEYS)),
+        plan_status=_as_plan_status(_first_key(payload, _PLAN_STATUS_KEYS)),
         request_hint=_as_bool(_first_key(payload, _HINT_KEYS)),
         resign=_as_bool(_first_key(payload, _RESIGN_KEYS)),
     )
@@ -180,6 +188,15 @@ def _as_move(value) -> str | None:
     text = value if isinstance(value, str) else str(value)
     text = text.strip()
     return text or None
+
+
+def _as_plan_status(value) -> str:
+    """Нормализовать ``plan_status`` к допустимому значению; иначе ``start``."""
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in _PLAN_STATUSES:
+            return normalized
+    return "start"
 
 
 def _as_bool(value) -> bool:

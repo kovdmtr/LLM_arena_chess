@@ -125,6 +125,24 @@ def test_defaults_when_fields_missing():
     assert out.reasoning == ""
     assert out.request_hint is False
     assert out.resign is False
+    # Фича «стратегия»: без полей — пусто/start.
+    assert out.strategy == ""
+    assert out.plan_status == "start"
+
+
+def test_parse_reads_strategy_and_plan_status():
+    out = parse_response(
+        '{"move": "Nf3", "strategy": "castle then push d5", "plan_status": "continue"}'
+    )
+    assert out.strategy == "castle then push d5"
+    assert out.plan_status == "continue"
+
+
+def test_parse_plan_status_is_normalized_and_clamped():
+    # Регистр/пробелы нормализуются; неизвестное значение → start.
+    assert parse_response('{"move": "e4", "plan_status": " Adapt "}').plan_status == "adapt"
+    assert parse_response('{"move": "e4", "plan_status": "yolo"}').plan_status == "start"
+    assert parse_response('{"move": "e4", "plan_status": 5}').plan_status == "start"
 
 
 # --- parse_response: устойчивость к обёртке -----------------------------------
