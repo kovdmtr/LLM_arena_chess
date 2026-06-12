@@ -108,7 +108,7 @@
 ## Веб-UI для турниров
 - [x] `feat(web): tournament manager` — `TournamentManager` (фоновый `TournamentRunner`, сессии, живой прогресс, список память+диск, загрузка записи/таблицы; шов `player_factory`).
 - [x] `feat(web): tournament create page and start endpoint` — `GET /tournaments/new` (чекбоксы ≥2 моделей + double), `POST /tournaments` (дедуп, валидация ≥2/ключей, фон-старт, 303-редирект), `new_tournament.html`, ссылки с индекса.
-- [ ] `feat(web): tournaments list and standings view` — `GET /tournaments` (список), `GET /tournaments/{id}` (живой прогресс+таблица для идущего, итоговый standings-отчёт для завершённого).
+- [x] `feat(web): tournaments list and standings view` — `GET /tournaments` (список память+диск), `GET /tournaments/{id}` (для идущего — авто-обновление + частичная таблица + расписание; для завершённого — итоговая таблица + расписание со ссылками на партии). **Веб-UI турниров закрыт → весь пост-бэклог завершён.**
 
 ## Бэклог (после Phase 8)
 - [x] CLI-обёртка прогона партии/турнира (`python -m arena.cli …`) — команды `models`/`play`/`tournament`, переиспользуют `GameRunner`/`TournamentRunner`/`storage`; UTF-8 вывод на Windows.

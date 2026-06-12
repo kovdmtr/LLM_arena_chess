@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="tournaments">
+  <div class="games-head">
+    <h2>Турниры</h2>
+    <a class="button" href="/tournaments/new">Новый турнир</a>
+  </div>
+
+  {% if tournaments %}
+  <ul class="games-list">
+    {% for t in tournaments %}
+    <li class="game-row">
+      <a href="/tournaments/{{ t.id }}">
+        <span class="players">{{ t.participants | join(", ") }}{% if t.double %} (×2){% endif %}</span>
+        <span class="badge status-{{ t.status }}">{% if t.live %}идёт{% else %}{{ t.status }}{% endif %}</span>
+        <span class="result">{{ t.played }}/{{ t.total }}</span>
+        <span class="gid">{{ t.id }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">Пока нет турниров. <a href="/tournaments/new">Создать первый</a>.</p>
+  {% endif %}
+</section>
+{% endblock %}

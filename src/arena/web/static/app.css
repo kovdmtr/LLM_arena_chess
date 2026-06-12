@@ -71,3 +71,17 @@ body {
 .live-status { font-weight: 600; }
 @media (max-width: 40rem) { .live-layout { grid-template-columns: 1fr; } }
 .new-game code { background: #f5f5f4; padding: .1rem .3rem; border-radius: .25rem; }
+.badge.status-finished { background: #e0f2fe; color: #075985; }
+/* --- турниры --- */
+.tournament-form fieldset { border: 1px solid #e7e5e4; border-radius: .5rem; padding: .75rem 1rem; margin: 0 0 1rem; }
+.tournament-form legend { font-weight: 600; padding: 0 .35rem; }
+.check { display: block; margin: .3rem 0; cursor: pointer; }
+.check input { margin-right: .5rem; }
+.muted { color: var(--muted); }
+.tournament .meta { color: var(--muted); margin-bottom: 1rem; }
+table.standings { width: 100%; border-collapse: collapse; margin: .5rem 0 1.5rem; font-variant-numeric: tabular-nums; }
+table.standings th, table.standings td { padding: .4rem .6rem; text-align: right; border-bottom: 1px solid #f0efed; }
+table.standings th:nth-child(2), table.standings td:nth-child(2) { text-align: left; }
+table.standings th { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; }
+ol.schedule { padding-left: 1.25rem; display: grid; gap: .3rem; }
+ol.schedule .muted { font-style: italic; }

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block head %}{% if live %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+{% block content %}
+<section class="tournament">
+  <h2>Турнир {{ tournament_id }}</h2>
+  <p class="meta">
+    Участники: {{ participants | join(", ") }}{% if double %} · двойной круг{% endif %}
+    · <span class="badge status-{{ status }}">{% if live %}идёт{% else %}{{ status }}{% endif %}</span>
+    · сыграно {{ played }}/{{ total }}
+  </p>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
+  <h3>Таблица</h3>
+  {% if standings %}
+  <table class="standings">
+    <thead>
+      <tr><th>#</th><th>Модель</th><th>И</th><th>В</th><th>Н</th><th>П</th><th>Очки</th><th>%</th></tr>
+    </thead>
+    <tbody>
+      {% for row in standings %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ row.display_name }}</td>
+        <td>{{ row.games }}</td>
+        <td>{{ row.wins }}</td>
+        <td>{{ row.draws }}</td>
+        <td>{{ row.losses }}</td>
+        <td>{{ "%.1f"|format(row.points) }}</td>
+        <td>{{ "%.1f"|format(row.score_pct) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">Пока нет сыгранных партий.</p>
+  {% endif %}
+
+  <h3>Расписание</h3>
+  <ol class="schedule">
+    {% for g in schedule %}
+    <li>
+      Тур {{ g.round }}: {{ g.white }} vs {{ g.black }} —
+      {% if g.result %}<strong>{{ g.result }}</strong>{% if g.game_id %}
+      <a href="/games/{{ g.game_id }}">партия</a>{% endif %}
+      {% else %}<span class="muted">ожидает</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+
+  <p class="actions"><a class="button button-secondary" href="/tournaments">Все турниры</a></p>
+</section>
+{% endblock %}

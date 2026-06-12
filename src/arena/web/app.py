@@ -27,7 +27,7 @@ from arena.models import PlayerInfo
 from arena.obs import register_secrets
 from arena.providers import ProviderError
 from arena.report import render_report_html
-from arena.web.games import GameManager
+from arena.web.games import STATUS_FINISHED, GameManager
 from arena.web.live import stream_session
 from arena.web.tournaments import TournamentManager
 
@@ -208,6 +208,61 @@ def create_app(
         )
         return RedirectResponse(
             f"/tournaments/{session.id}", status_code=status.HTTP_303_SEE_OTHER
+        )
+
+    @app.get("/tournaments", response_class=HTMLResponse)
+    def tournaments_list(request: Request) -> HTMLResponse:
+        """Список турниров: идущие (из памяти) и завершённые (память/диск)."""
+        items = _get_tournament_manager(request.app).list_tournaments()
+        return templates.TemplateResponse(
+            request,
+            "tournaments.html",
+            {"title": f"{APP_TITLE} — турниры", "tournaments": items},
+        )
+
+    @app.get("/tournaments/{tournament_id}", response_class=HTMLResponse)
+    def tournament_detail(request: Request, tournament_id: str) -> HTMLResponse:
+        """Страница турнира: живой прогресс+таблица для идущего, итог для завершённого.
+
+        Идущий турнир (сессия в памяти не завершена) → страница с авто-обновлением,
+        частичной таблицей и расписанием. Завершённый → итоговая таблица + расписание
+        со ссылками на партии. Неизвестный → 404.
+        """
+        manager = _get_tournament_manager(request.app)
+        record = manager.load_record(tournament_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="турнир не найден")
+        session = manager.get(tournament_id)
+        live = session is not None and not session.done
+        standings = manager.load_standings(tournament_id)
+        names = {p.model_id: p.display_name for p in record.participants}
+        schedule = [
+            {
+                "round": game.round_number,
+                "white": names.get(game.white, game.white),
+                "black": names.get(game.black, game.black),
+                "result": game.result,
+                "game_id": game.game_id,
+            }
+            for game in record.games
+        ]
+        played = sum(1 for game in record.games if game.result is not None)
+        return templates.TemplateResponse(
+            request,
+            "tournament_detail.html",
+            {
+                "title": f"{APP_TITLE} — турнир {tournament_id}",
+                "tournament_id": tournament_id,
+                "participants": [p.display_name for p in record.participants],
+                "double": record.double,
+                "status": session.status if session is not None else STATUS_FINISHED,
+                "live": live,
+                "played": played,
+                "total": len(record.games),
+                "standings": standings.models if standings is not None else [],
+                "schedule": schedule,
+                "error": session.error if session is not None else None,
+            },
         )
 
     return app
