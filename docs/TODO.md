@@ -107,7 +107,7 @@
 
 ## Веб-UI для турниров
 - [x] `feat(web): tournament manager` — `TournamentManager` (фоновый `TournamentRunner`, сессии, живой прогресс, список память+диск, загрузка записи/таблицы; шов `player_factory`).
-- [ ] `feat(web): tournament create page and start endpoint` — `GET /tournaments/new` (форма ≥2 моделей + double), `POST /tournaments` (валидация ключей, фон, редирект), шаблоны, ссылка с индекса.
+- [x] `feat(web): tournament create page and start endpoint` — `GET /tournaments/new` (чекбоксы ≥2 моделей + double), `POST /tournaments` (дедуп, валидация ≥2/ключей, фон-старт, 303-редирект), `new_tournament.html`, ссылки с индекса.
 - [ ] `feat(web): tournaments list and standings view` — `GET /tournaments` (список), `GET /tournaments/{id}` (живой прогресс+таблица для идущего, итоговый standings-отчёт для завершённого).
 
 ## Бэклог (после Phase 8)

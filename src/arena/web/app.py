@@ -23,11 +23,13 @@ from fastapi.templating import Jinja2Templates
 
 from arena.config import ConfigError, ModelCatalog, Settings
 from arena.engine import build_engine
+from arena.models import PlayerInfo
 from arena.obs import register_secrets
 from arena.providers import ProviderError
 from arena.report import render_report_html
 from arena.web.games import GameManager
 from arena.web.live import stream_session
+from arena.web.tournaments import TournamentManager
 
 # Каталог пакета веб-слоя; статика и шаблоны лежат рядом с этим модулем.
 _WEB_DIR = Path(__file__).resolve().parent
@@ -42,6 +44,7 @@ def create_app(
     settings: Settings | None = None,
     *,
     game_manager: GameManager | None = None,
+    tournament_manager: TournamentManager | None = None,
 ) -> FastAPI:
     """Собрать экземпляр FastAPI-приложения арены (Phase 6).
 
@@ -56,6 +59,7 @@ def create_app(
     app.state.settings = settings
     app.state.catalog = None  # строится лениво из settings (см. _get_catalog)
     app.state.game_manager = game_manager  # либо лениво в _get_manager
+    app.state.tournament_manager = tournament_manager  # либо лениво в _get_tournament_manager
 
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     app.state.templates = templates
@@ -157,6 +161,55 @@ def create_app(
             raise HTTPException(status_code=404, detail="партия не найдена")
         return HTMLResponse(render_report_html(record))
 
+    @app.get("/tournaments/new", response_class=HTMLResponse)
+    def new_tournament(request: Request) -> HTMLResponse:
+        """Страница создания турнира: выбор участников (≥2 модели) и формата."""
+        return _render_new_tournament(request, _get_catalog(request.app))
+
+    @app.post("/tournaments", response_model=None)
+    def start_tournament(
+        request: Request,
+        models: list[str] = Form(default=[]),
+        double: bool = Form(False),
+    ) -> HTMLResponse | RedirectResponse:
+        """Запустить round-robin турнир между выбранными моделями (в фоне).
+
+        Требуется ≥2 различных модели; каждая резолвится через каталог (fail-fast
+        при отсутствии ключа). При ошибке форма перерисовывается (400). При успехе
+        турнир стартует в фоне (``TournamentManager``), редирект 303 на его страницу.
+        """
+        catalog = _get_catalog(request.app)
+        model_ids = list(dict.fromkeys(models))  # дедуп, порядок сохранён
+        if len(model_ids) < 2:
+            return _render_new_tournament(
+                request, catalog,
+                error="Выберите минимум две модели.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            participants = []
+            for model_id in model_ids:
+                catalog.resolve(model_id)  # fail-fast: ключ обязателен
+                model = catalog.get(model_id)
+                participants.append(
+                    PlayerInfo(
+                        model_id=model.id,
+                        provider=model.provider,
+                        display_name=model.display_name,
+                    )
+                )
+        except ConfigError as exc:
+            return _render_new_tournament(
+                request, catalog, error=str(exc),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        session = _get_tournament_manager(request.app).start(
+            participants, double=double
+        )
+        return RedirectResponse(
+            f"/tournaments/{session.id}", status_code=status.HTTP_303_SEE_OTHER
+        )
+
     return app
 
 
@@ -186,6 +239,32 @@ def _render_new_game(
         request,
         "new_game.html",
         {"title": f"{APP_TITLE} — новая партия", "models": models, "error": error},
+        status_code=status_code,
+    )
+
+
+def _render_new_tournament(
+    request: Request,
+    catalog: ModelCatalog,
+    *,
+    error: str | None = None,
+    status_code: int = 200,
+) -> HTMLResponse:
+    """Отрисовать страницу создания турнира (``new_tournament.html``) из каталога."""
+    models = [
+        {
+            "id": model.id,
+            "display_name": model.display_name,
+            "provider": model.provider,
+            "has_key": catalog.has_key(model.id),
+        }
+        for model in catalog.models
+    ]
+    templates: Jinja2Templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request,
+        "new_tournament.html",
+        {"title": f"{APP_TITLE} — новый турнир", "models": models, "error": error},
         status_code=status_code,
     )
 
@@ -245,6 +324,28 @@ def _get_manager(app: FastAPI) -> GameManager:
             player_settings=settings.config.arena.to_player_settings(),
         )
         app.state.game_manager = manager
+    return manager
+
+
+def _get_tournament_manager(app: FastAPI) -> TournamentManager:
+    """Вернуть планировщик фоновых турниров, построив его лениво при первом обращении.
+
+    Без явного ``tournament_manager`` строит дефолтный (реальные игроки через каталог,
+    ★-движок/анализ из конфига — как у ``GameManager``). Кэшируется в app.state.
+    """
+    manager = getattr(app.state, "tournament_manager", None)
+    if manager is None:
+        settings = _ensure_settings(app)
+        engine_cfg = settings.config.engine
+        manager = TournamentManager(
+            catalog=_get_catalog(app),
+            games_root=settings.config.output.games_dir,
+            engine_factory=lambda: build_engine(engine_cfg, depth=engine_cfg.hint_depth),
+            analysis_config=settings.config.analysis,
+            analysis_depth=engine_cfg.analysis_depth,
+            player_settings=settings.config.arena.to_player_settings(),
+        )
+        app.state.tournament_manager = manager
     return manager
 
 

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="new-tournament">
+  <h2>Новый турнир</h2>
+
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
+  {% if models %}
+  <form method="post" action="/tournaments" class="tournament-form">
+    <fieldset class="field">
+      <legend>Участники (выберите минимум две модели)</legend>
+      {% for model in models %}
+      <label class="check">
+        <input type="checkbox" name="models" value="{{ model.id }}"{% if not model.has_key %} disabled{% endif %}>
+        {{ model.display_name }} ({{ model.provider }})
+        {% if not model.has_key %}<span class="muted">— ключ не задан</span>{% endif %}
+      </label>
+      {% endfor %}
+    </fieldset>
+
+    <label class="check">
+      <input type="checkbox" name="double" value="true">
+      Двойной круг (каждая пара играет дважды со сменой цвета)
+    </label>
+
+    <button type="submit" class="button">Запустить турнир</button>
+  </form>
+  <p class="hint">
+    Round-robin: каждый играет с каждым. Модели без API-ключа недоступны — задайте
+    переменную в <code>.env</code>.
+  </p>
+  {% else %}
+  <p class="empty">В каталоге нет моделей. Добавьте их в <code>config.yaml</code>.</p>
+  {% endif %}
+</section>
+{% endblock %}
