@@ -22,6 +22,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from markupsafe import Markup
 
 from arena.analysis import classification_glyph
+from arena.core import build_pgn
 from arena.models import GameRecord
 from arena.report.board_image import DEFAULT_SIZE, render_board_svg, render_move_svg
 
@@ -93,6 +94,10 @@ def render_report_html(
             )
         )
 
+    # PGN встраивается в отчёт (а не тянется по сети), чтобы кнопка «Скачать PGN»
+    # работала и на сайте, и в сохранённом offline-отчёте (self-contained, D-013).
+    pgn = build_pgn(game, event=event)
+
     template = _ENV.get_template(_TEMPLATE_NAME)
     return template.render(
         game=game,
@@ -109,4 +114,6 @@ def render_report_html(
         ),
         start_board=start_board,
         board_size=board_size,
+        pgn=pgn,
+        pgn_filename=f"{game.id}.pgn",
     )

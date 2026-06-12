@@ -110,5 +110,8 @@
 - [x] `feat(web): tournament create page and start endpoint` — `GET /tournaments/new` (чекбоксы ≥2 моделей + double), `POST /tournaments` (дедуп, валидация ≥2/ключей, фон-старт, 303-редирект), `new_tournament.html`, ссылки с индекса.
 - [x] `feat(web): tournaments list and standings view` — `GET /tournaments` (список память+диск), `GET /tournaments/{id}` (для идущего — авто-обновление + частичная таблица + расписание; для завершённого — итоговая таблица + расписание со ссылками на партии). **Веб-UI турниров закрыт → весь пост-бэклог завершён.**
 
+## Мелкие улучшения
+- [x] `feat(report): download PGN button` — кнопка «Скачать PGN» в отчёте; PGN встроен в страницу (Blob-скачивание), работает и на сайте, и в offline-отчёте (self-contained).
+
 ## Бэклог (после Phase 8)
 - [x] CLI-обёртка прогона партии/турнира (`python -m arena.cli …`) — команды `models`/`play`/`tournament`, переиспользуют `GameRunner`/`TournamentRunner`/`storage`; UTF-8 вывод на Windows.

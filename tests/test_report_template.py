@@ -336,3 +336,36 @@ def test_report_escapes_html_in_strategy():
     html = render_report_html(game)
     assert "<b>evil</b>" not in html
     assert "&lt;b&gt;evil" in html
+
+
+# --- кнопка «Скачать PGN» (self-contained) ----------------------------------
+
+
+def test_report_has_download_pgn_button():
+    html = render_report_html(_game())
+    assert 'id="download-pgn"' in html
+    assert "Скачать PGN" in html
+    # имя файла = <id>.pgn, безопасно сериализовано в JS.
+    assert '"g-report.pgn"' in html
+
+
+def test_report_embeds_pgn_inline():
+    html = render_report_html(_game())
+    assert 'id="pgn-data"' in html
+    # В отчёт встроен именно PGN (теги партии); без сети/внешних файлов.
+    assert "[Event " in html
+    assert "[White " in html
+    assert "[Result " in html
+    assert "<img" not in html  # self-contained
+
+
+def test_report_embedded_pgn_matches_build_pgn():
+    from markupsafe import escape
+
+    from arena.core import build_pgn
+
+    game = _game()
+    html = render_report_html(game)
+    expected = build_pgn(game, event="LLM Chess Arena")
+    # Внутри <textarea> PGN HTML-экранирован — сверяем экранированную форму.
+    assert str(escape(expected)) in html
