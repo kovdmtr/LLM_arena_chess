@@ -105,6 +105,10 @@
 - [x] `feat(report): show move plan and status badge` — строка «План: …» + бейдж статуса (start/continue/adapt/abandon) в плеере отчёта; экранирование. **Фича завершена (D-025).**
 - [x] (опц.) `feat(analysis): plan-adherence commentary` — промпт комментария несёт прежний план стороны + `plan_status`/`strategy` хода и просит оценить, следовал ли ход плану; мягкая деградация при выключенной фиче.
 
+## Веб-UI для турниров
+- [x] `feat(web): tournament manager` — `TournamentManager` (фоновый `TournamentRunner`, сессии, живой прогресс, список память+диск, загрузка записи/таблицы; шов `player_factory`).
+- [ ] `feat(web): tournament create page and start endpoint` — `GET /tournaments/new` (форма ≥2 моделей + double), `POST /tournaments` (валидация ключей, фон, редирект), шаблоны, ссылка с индекса.
+- [ ] `feat(web): tournaments list and standings view` — `GET /tournaments` (список), `GET /tournaments/{id}` (живой прогресс+таблица для идущего, итоговый standings-отчёт для завершённого).
+
 ## Бэклог (после Phase 8)
-- [ ] Веб-UI для турниров (старт/наблюдение/таблица в браузере).
 - [x] CLI-обёртка прогона партии/турнира (`python -m arena.cli …`) — команды `models`/`play`/`tournament`, переиспользуют `GameRunner`/`TournamentRunner`/`storage`; UTF-8 вывод на Windows.
