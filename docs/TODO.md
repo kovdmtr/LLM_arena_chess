@@ -112,6 +112,7 @@
 
 ## Мелкие улучшения
 - [x] `feat(report): download PGN button` — кнопка «Скачать PGN» в отчёте; PGN встроен в страницу (Blob-скачивание), работает и на сайте, и в offline-отчёте (self-contained).
+- [x] `chore(deploy): docker deployment` — `Dockerfile` (Python 3.11 + Stockfish из apt, editable-install для резолва `config.yaml`), `docker-compose.yml` (порт на `127.0.0.1`, `env_file .env`, volume `games/`), `.dockerignore`, `deploy/DEPLOY.md` (безопасный деплой: смена пароля, отсутствие авторизации → nginx basic-auth/SSH-туннель/firewall).
 
 ## Бэклог (после Phase 8)
 - [x] CLI-обёртка прогона партии/турнира (`python -m arena.cli …`) — команды `models`/`play`/`tournament`, переиспользуют `GameRunner`/`TournamentRunner`/`storage`; UTF-8 вывод на Windows.

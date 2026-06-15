@@ -1,0 +1,19 @@
+# LLM Chess Arena — запуск веб-приложения в одном контейнере.
+#   docker compose up -d --build      # собрать и поднять
+#   docker compose logs -f            # логи
+#   docker compose down               # остановить
+#
+# Порт по умолчанию проброшен ТОЛЬКО на 127.0.0.1 (не наружу) — у приложения нет
+# авторизации, а открытые партии тратят деньги на API. Наружу выставляй осознанно:
+# через nginx с basic-auth/HTTPS или SSH-туннель (см. deploy/DEPLOY.md).
+services:
+  arena:
+    build: .
+    image: llm-chess-arena
+    container_name: llm-chess-arena
+    env_file: .env            # API-ключи (создай на сервере из .env.example)
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./games:/app/games    # партии/турниры переживают перезапуск
+    restart: unless-stopped

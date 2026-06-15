@@ -1,0 +1,24 @@
+# Не тащим в образ лишнее и секретное.
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Секреты — НИКОГДА в образ (ключи приходят через env, docker-compose env_file).
+.env
+.env.*
+
+# Тяжёлое/ненужное в рантайме.
+tools/
+games/
+examples/
+tests/
+docs/
+*.md
+!README.md
