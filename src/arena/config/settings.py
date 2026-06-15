@@ -182,6 +182,9 @@ class Secrets(BaseSettings):
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
     google_api_key: str | None = None
+    # Секрет доступа к веб-UI «по ссылке»: если задан, к сайту пускают только
+    # запросы с этим токеном (``?token=…`` → cookie). Пусто → сайт открыт.
+    arena_access_token: str | None = None
 
     def by_env_name(self, env_name: str) -> str | None:
         """Вернуть ключ по имени переменной окружения (как в ``api_key_env``).
