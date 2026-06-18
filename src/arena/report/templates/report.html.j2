@@ -74,7 +74,7 @@
     .replay-boards svg { width: 100%; height: auto; display: block; }
     .anim-patch, .anim-piece { position: absolute; pointer-events: none; }
     .anim-patch { z-index: 1; }
-    .anim-piece { z-index: 2; transition: transform .48s ease-in-out; }
+    .anim-piece { z-index: 2; transition: transform .2s ease-in-out; }
     .anim-piece svg { width: 100%; height: 100%; display: block; }
     .replay-side { flex: 1; min-width: 240px; max-width: 460px; }
     .replay-detail { display: none; background: #fff; border: 1px solid #e7e5e4; border-radius: .5rem; padding: 1rem; }
@@ -242,7 +242,7 @@
       var stage = root.querySelector(".replay-boards");
       var REPLAY_ANIM = {{ replay_anim|tojson }};
       var PIECE_SVG = {{ piece_svgs|tojson }};
-      var LIGHT = "#ffce9e", DARK = "#d18b47", ANIM_MS = 480;
+      var LIGHT = "#ffce9e", DARK = "#d18b47", ANIM_MS = 200;
       var current = -1;
       var animTimer = null, animNodes = [], animAfter = null;
 
