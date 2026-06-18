@@ -127,15 +127,25 @@ def test_report_can_omit_boards():
 
 def test_report_renders_replay_player():
     html = render_report_html(_game())
-    # Контейнер плеера и элементы навигации.
+    # Контейнер плеера и элементы навигации (шаг назад/вперёд + слайдер).
     assert 'id="replay"' in html
-    assert 'data-nav="first"' in html
     assert 'data-nav="prev"' in html
     assert 'data-nav="next"' in html
-    assert 'data-nav="last"' in html
     assert 'class="replay-slider"' in html
+    # Кнопки «в начало/в конец» убраны.
+    assert 'data-nav="first"' not in html
+    assert 'data-nav="last"' not in html
     # Встроенный JS навигации (self-contained, без сети).
     assert "function show(frame)" in html
+
+
+def test_report_move_list_is_paired():
+    # Ходы идут парами: строка пары + ячейки с data-frame.
+    html = render_report_html(_game(["e4", "e5", "Nf3"]))
+    assert 'class="mv-row"' in html
+    assert 'class="mv-cell"' in html
+    # У нечётного числа ходов последняя строка добивается пустой ячейкой.
+    assert 'class="mv-cell empty"' in html
 
 
 def test_report_player_has_start_frame_and_one_board_per_move():

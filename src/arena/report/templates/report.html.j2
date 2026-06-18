@@ -78,25 +78,29 @@
     .replay-detail .headline { font-weight: 600; }
     .replay-detail .num { color: #78716c; }
     .replay-detail .side-tag { color: #78716c; font-weight: 400; }
-    .replay-controls { display: flex; gap: .5rem; align-items: center; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
+    .replay-controls { display: flex; gap: .75rem; align-items: center; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
     .replay-controls button {
       font: inherit; cursor: pointer; border: 1px solid #d6d3d1; background: #fff;
-      border-radius: .375rem; padding: .3rem .7rem; line-height: 1;
+      width: 2.4rem; height: 2.4rem; border-radius: 999px; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1rem; color: #1c1917; transition: background .15s, border-color .15s;
     }
-    .replay-controls button:hover { background: #f5f5f4; }
-    .replay-slider { flex: 1; min-width: 140px; max-width: 360px; }
+    .replay-controls button:hover { background: #f5f5f4; border-color: #a8a29e; }
+    .replay-controls button:active { background: #e7e5e4; }
+    .replay-slider { flex: 1; min-width: 160px; max-width: 360px; accent-color: #16a34a; cursor: pointer; }
     .replay-counter { font-variant-numeric: tabular-nums; color: #57534e; font-size: .85rem; min-width: 4rem; text-align: center; }
-    ol.replay-moves {
-      list-style: none; padding: 0; margin: 1rem auto 0; max-width: 720px;
-      display: flex; flex-wrap: wrap; gap: .3rem;
+    .replay-moves { margin: 1rem auto 0; max-width: 460px; }
+    .replay-moves .mv-row {
+      display: grid; grid-template-columns: 2.4rem 1fr 1fr; gap: .25rem; align-items: center;
+      padding: .1rem .35rem; border-radius: .3rem;
     }
-    ol.replay-moves li {
-      cursor: pointer; border: 1px solid #e7e5e4; background: #fff; border-radius: .375rem;
-      padding: .25rem .5rem; font-size: .9rem;
-    }
-    ol.replay-moves li:hover { background: #f5f5f4; }
-    ol.replay-moves li.is-current { background: #1c1917; color: #fafaf9; border-color: #1c1917; }
-    ol.replay-moves li.is-current .num { color: #d6d3d1; }
+    .replay-moves .mv-row:nth-child(odd) { background: #fafaf9; }
+    .replay-moves .mv-num { color: #78716c; font-variant-numeric: tabular-nums; }
+    .replay-moves .mv-cell { cursor: pointer; padding: .12rem .4rem; border-radius: .25rem; }
+    .replay-moves .mv-cell:hover { background: #ecfccb; }
+    .replay-moves .mv-cell.is-current { background: #dcfce7; color: #166534; font-weight: 600; }
+    .replay-moves .mv-cell.empty { cursor: default; }
+    .replay-moves .glyph { margin-left: .15rem; }
     footer { text-align: center; color: #a8a29e; font-size: .8rem; margin-top: 2rem; }
     .report-actions { margin: .75rem 0 0; }
     .dl-btn {
@@ -207,23 +211,19 @@
     </div>
 
     <div class="replay-controls">
-      <button type="button" data-nav="first" title="К началу (Home)">⏮</button>
       <button type="button" data-nav="prev" title="Назад (←)">◀</button>
       <input class="replay-slider" type="range" min="0" max="{{ moves|length }}" value="0" aria-label="Перемотка ходов">
       <button type="button" data-nav="next" title="Вперёд (→)">▶</button>
-      <button type="button" data-nav="last" title="К концу (End)">⏭</button>
       <span class="replay-counter">0 / {{ moves|length }}</span>
     </div>
 
-    <ol class="replay-moves">
+    <div class="replay-moves">
       {% for m in moves %}
-      <li data-frame="{{ loop.index }}">
-        <span class="num">{{ m.move_number }}{% if m.record.side == "white" %}.{% else %}...{% endif %}</span>
-        {{ m.record.san }}
-        {% if m.record.classification %}<span class="badge {{ m.record.classification }}">{{ m.record.classification }}</span>{% if m.record.classification|glyph %}<span class="glyph">{{ m.record.classification|glyph }}</span>{% endif %}{% endif %}
-      </li>
+      {% if loop.index0 % 2 == 0 %}<div class="mv-row"><span class="mv-num">{{ loop.index0 // 2 + 1 }}.</span>{% endif %}
+        <span class="mv-cell" data-frame="{{ loop.index }}">{{ m.record.san }}{% if m.record.classification|glyph %}<span class="glyph">{{ m.record.classification|glyph }}</span>{% endif %}</span>
+      {% if loop.index0 % 2 == 1 or loop.last %}{% if loop.last and loop.index0 % 2 == 0 %}<span class="mv-cell empty"></span>{% endif %}</div>{% endif %}
       {% endfor %}
-    </ol>
+    </div>
 
     <script>
     (function () {
@@ -234,7 +234,7 @@
       var counter = root.querySelector(".replay-counter");
       var boards = root.querySelectorAll(".frame-board");
       var details = root.querySelectorAll(".replay-detail");
-      var items = root.querySelectorAll(".replay-moves li");
+      var items = root.querySelectorAll(".replay-moves .mv-cell[data-frame]");
       var current = -1;
 
       function setActive(nodes, frame) {
@@ -259,10 +259,8 @@
       root.querySelectorAll("[data-nav]").forEach(function (btn) {
         btn.addEventListener("click", function () {
           var nav = btn.dataset.nav;
-          if (nav === "first") show(0);
-          else if (nav === "prev") show(current - 1);
+          if (nav === "prev") show(current - 1);
           else if (nav === "next") show(current + 1);
-          else if (nav === "last") show(total);
         });
       });
       if (slider) slider.addEventListener("input", function () { show(parseInt(slider.value, 10)); });
@@ -272,8 +270,6 @@
       document.addEventListener("keydown", function (e) {
         if (e.key === "ArrowLeft") { show(current - 1); e.preventDefault(); }
         else if (e.key === "ArrowRight") { show(current + 1); e.preventDefault(); }
-        else if (e.key === "Home") { show(0); e.preventDefault(); }
-        else if (e.key === "End") { show(total); e.preventDefault(); }
       });
 
       show(0);
