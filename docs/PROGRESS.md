@@ -41,6 +41,26 @@
   (`TournamentManager`), B — `create page + start endpoint`, C — `list + standings view`.
   **Веб-UI турниров закрыт → весь пост-бэклог завершён.** Запланированных задач больше
   нет; дальнейшее — по запросу пользователя.
+- **АКТУАЛЬНОЕ СОСТОЯНИЕ (2026-06-18, для новой сессии):** проект завершён + **развёрнут
+  на проде**. Сверх плана сделаны по запросу: фича «стратегия/план» (D-025), CLI
+  (`arena models/play/tournament`), веб-UI турниров, доступ «по ссылке»
+  (`ARENA_ACCESS_TOKEN`), кнопка «Скачать PGN» в отчёте, ссылка «На главную» в отчёте,
+  авто-переход live→анализ по концу партии, Docker-деплой. Свежие фиксы:
+  `fix(deploy): Stockfish symlink` (оценка ходов в контейнере), `fix(config): Gemini
+  max_tokens=8192` (gemini-2.5-pro рвал партию пустым ответом из-за «думающего» режима).
+  Тесты: **623 passed, 1 skipped**. **Открытый хвост:** последние 3 коммита
+  (`69a8148`, `d745823`, `20fcbfb`) надо выкатить на сервер (`git push` с ПК →
+  на сервере `git pull && docker compose up -d --build`). Возможное улучшение по
+  запросу: сделать `gemini-2.5-flash` моделью по умолчанию (дешевле/стабильнее).
+- **ДЕПЛОЙ (прод):** Docker-контейнер на сервере **167.233.41.85** (Ubuntu, Hetzner),
+  за nginx+HTTPS (Let's Encrypt), адрес **https://167.233.41.85.sslip.io** (sslip.io —
+  бесплатное имя на IP, т.к. домена нет). Доступ закрыт токеном `ARENA_ACCESS_TOKEN`
+  (живёт в `.env` НА СЕРВЕРЕ, не в репозитории; смотреть `grep ARENA_ACCESS_TOKEN .env`).
+  Ключи провайдеров — тоже в серверном `.env`. Инструкция и nginx-конфиг — `deploy/DEPLOY.md`.
+  Перевыкат после изменений кода/конфига: `git pull && docker compose up -d --build`;
+  только перезапуск: `docker compose restart`; логи: `docker compose logs -f`.
+  GitHub: `https://github.com/kovdmtr/LLM_arena_chess` (приватный; PAT пользователя,
+  светившийся в чате, рекомендовано отозвать).
 - **Примечание (среда):** установленный Starlette использует НОВУЮ сигнатуру
   `Jinja2Templates.TemplateResponse(request, name, context)` (старый порядок
   `(name, {"request": ...})` падает `TypeError: unhashable type: 'dict'`). `TestClient`
@@ -152,3 +172,7 @@
 | 2026-06-11 | `feat(web): tournaments list and standings view` (веб-UI турниров, задача C/3): `GET /tournaments` (`tournaments.html` — карточки память+диск, прогресс `played/total`) и `GET /tournaments/{id}` (`tournament_detail.html`): идущий → авто-обновление (`<meta refresh>` через `head`-блок `base.html`) + частичная таблица + расписание; завершённый → итоговая таблица + расписание со ссылками `/games/{game_id}`; 404 для неизвестного. CSS для таблицы/чекбоксов/расписания. Тесты `test_web_tournaments_view.py` (5, реальный менеджер на фейках, «ворота» для live). **Веб-UI турниров закрыт → весь пост-бэклог завершён.** pytest зелёный (611 passed, 1 skipped) | `1a2e443` | — |
 | 2026-06-11 | `feat(report): download PGN button` (мелкое улучшение, по запросу): в HTML-отчёт встроен PGN (`build_pgn` в `render_report_html` → скрытая `<textarea>`) + кнопка «⬇ Скачать PGN» со скачиванием через `Blob`/`URL.createObjectURL` (имя `<id>.pgn`). Работает и на сайте (страница завершённой партии), и в сохранённом offline-отчёте — остаётся self-contained (без сети, D-013). Тесты `test_report_template.py` (+3: кнопка/имя файла, встроенный PGN, совпадение с `build_pgn`). pytest зелёный (614 passed, 1 skipped) | `32430ca` | — |
 | 2026-06-11 | `chore(deploy): docker` + `feat(web): access by secret link` (по запросу — деплой на сервер): `Dockerfile`/`docker-compose.yml`/`.dockerignore`/`deploy/DEPLOY.md` (один контейнер, Stockfish из apt, порт на 127.0.0.1, секреты через env, volume `games/`). Плюс доступ «по ссылке»: middleware в `web/app.py` — при заданном `ARENA_ACCESS_TOKEN` (`Secrets.arena_access_token`) пускают только с `?token=…` (→ httponly-cookie, constant-time сверка), health/static и без токена; WS `/games/{id}/ws` тоже под токеном; токен не задан → открыто (старые тесты целы). Тесты `test_web_access.py` (7). pytest зелёный (621 passed, 1 skipped) | `dc312fa` | — |
+| 2026-06-18 | **Деплой на прод** (по шагам с пользователем): Docker-контейнер на сервере 167.233.41.85, nginx+HTTPS (Let's Encrypt) на `https://167.233.41.85.sslip.io`, доступ по токену `ARENA_ACCESS_TOKEN` (в серверном `.env`). GitHub `kovdmtr/LLM_arena_chess` (приватный). | — (инфра) | — |
+| 2026-06-18 | `fix(deploy): make Stockfish findable in Docker` — apt кладёт движок в `/usr/games/`, которого нет в PATH процесса uvicorn → ★-анализ молча отключался в контейнере (не было «оценки ходов»). Симлинк `/usr/games/stockfish`→`/usr/local/bin/stockfish` в `Dockerfile`. **Требует пересборки на сервере.** | `69a8148` | — |
+| 2026-06-18 | `feat(web): home link on report + live auto-opens analysis` (по запросу): в отчёте партии ссылка «← На главную» (web передаёт `home_url="/"`; offline-файл — без ссылки); live-страница по `status`-кадру сама `location.reload()` → открывает отчёт с анализом. Фикс хрупкости `test_web_app` (gate-independent через `access_token=""`). Тесты +2. pytest зелёный (623 passed, 1 skipped) | `d745823` | — |
+| 2026-06-18 | `fix(config): raise Gemini 2.5 Pro max_tokens to 8192` — gemini-2.5-pro «думает» output-токенами; при 1024 на длинном промпте партии бюджет уходил в мысли, текст пустой → партия рвалась. Лимит 8192 (флэш — дешевле). Подтверждено: прямой вызов Gemini в контейнере отвечает `OK`, падало только в партии. **Требует пересборки на сервере.** pytest зелёный (623 passed, 1 skipped) | `20fcbfb` | — |
