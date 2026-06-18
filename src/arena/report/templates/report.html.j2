@@ -56,15 +56,14 @@
     .badge.mistake { background: #ffedd5; color: #9a3412; }
     .badge.blunder { background: #fee2e2; color: #991b1b; }
     .glyph { font-weight: 700; margin-left: .25rem; color: #44403c; font-variant-ligatures: none; }
-    .reasoning { margin: .5rem 0 0; color: #292524; white-space: pre-wrap; }
+    .reasoning { margin: 0; color: #292524; white-space: pre-wrap; }
     .reasoning.empty { color: #a8a29e; font-style: italic; }
-    .plan { margin: .5rem 0 0; color: #292524; font-size: .9rem; white-space: pre-wrap; }
-    .plan .label { color: #78716c; font-weight: 600; }
-    .plan-status { display: inline-block; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: .1rem .4rem; border-radius: .25rem; margin-right: .4rem; background: #e7e5e4; color: #44403c; }
-    .plan-status.status-start { background: #e0f2fe; color: #075985; }
-    .plan-status.status-continue { background: #dcfce7; color: #166534; }
-    .plan-status.status-adapt { background: #fef9c3; color: #854d0e; }
-    .plan-status.status-abandon { background: #fee2e2; color: #991b1b; }
+    .plan { margin: 0; color: #292524; font-size: .9rem; white-space: pre-wrap; }
+    .detail-block { margin-top: .75rem; padding: .55rem .7rem; border: 1px solid #e7e5e4; border-radius: .4rem; }
+    .detail-block .block-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #78716c; margin-bottom: .3rem; }
+    .detail-block.thoughts { background: #fafaf9; }
+    .detail-block.plan-block { background: #f0f9ff; border-color: #cfe8f5; }
+    .detail-block.plan-block .block-label { color: #0369a1; }
     .hint { margin-top: .5rem; font-size: .85rem; color: #0369a1; }
     .eval { color: #57534e; font-size: .85rem; }
     /* --- интерактивный плеер: одна доска + перемотка ходов --- */
@@ -185,13 +184,19 @@
             {% if m.record.classification %}<span class="badge {{ m.record.classification }}">{{ m.record.classification }}</span>{% if m.record.classification|glyph %}<span class="glyph">{{ m.record.classification|glyph }}</span>{% endif %}{% endif %}
             {% if m.record.engine_eval_cp is not none %}<span class="eval">{{ "%+d"|format(m.record.engine_eval_cp) }} cp</span>{% endif %}
           </div>
-          {% if m.record.reasoning %}
-          <p class="reasoning">{{ m.record.reasoning }}</p>
-          {% else %}
-          <p class="reasoning empty">(без объяснения)</p>
-          {% endif %}
+          <div class="detail-block thoughts">
+            <div class="block-label">Мысли модели</div>
+            {% if m.record.reasoning %}
+            <p class="reasoning">{{ m.record.reasoning }}</p>
+            {% else %}
+            <p class="reasoning empty">(без объяснения)</p>
+            {% endif %}
+          </div>
           {% if m.record.strategy %}
-          <p class="plan"><span class="plan-status status-{{ m.record.plan_status }}">{{ m.record.plan_status }}</span><span class="label">План:</span> {{ m.record.strategy }}</p>
+          <div class="detail-block plan-block">
+            <div class="block-label">План</div>
+            <p class="plan">{{ m.record.strategy }}</p>
+          </div>
           {% endif %}
           {% if m.record.hint %}
           <div class="hint">Подсказка движка: {{ m.record.hint.best_move }}{% if m.record.hint.eval_cp is not none %} ({{ "%+d"|format(m.record.hint.eval_cp) }} cp){% endif %}</div>

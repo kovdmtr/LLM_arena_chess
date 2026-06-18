@@ -262,26 +262,32 @@ def test_report_has_no_secrets():
     assert "sk-" not in html
 
 
-# --- фича «стратегия»: план и бейдж статуса в отчёте ------------------------
+# --- фича «стратегия»: подписанные блоки «мысли модели» / «план» ------------
 
 
-def test_report_shows_move_plan_and_status_badge():
+def test_report_shows_labeled_thoughts_and_plan_blocks():
     game = _game(["e4"])
+    game.moves[0].reasoning = "Хочу захватить центр"
     game.moves[0].strategy = "Захватить центр и рокировать"
     game.moves[0].plan_status = "adapt"
     html = render_report_html(game)
+    # Мысли модели и план — в отдельных подписанных блоках.
+    assert "Мысли модели" in html
+    assert "Хочу захватить центр" in html
+    assert "План" in html
     assert "Захватить центр и рокировать" in html
-    assert "План:" in html
-    # Бейдж статуса с классом для подсветки.
-    assert "status-adapt" in html
-    assert "adapt" in html
+    assert 'class="detail-block plan-block"' in html
+    # Статус-бейдж убран (мешал восприятию): ни рендера, ни CSS-класса.
+    assert "plan-status" not in html
+    assert "status-adapt" not in html
 
 
-def test_report_omits_plan_when_strategy_empty():
+def test_report_omits_plan_block_when_strategy_empty():
     html = render_report_html(_game(["e4"]))  # strategy="" по умолчанию
-    assert "План:" not in html
-    # Рендеренного бейджа нет (строка `.plan-status` есть только в CSS).
-    assert 'class="plan-status' not in html
+    # Блок плана не рендерится (строка plan-block есть только в CSS),
+    # блок мыслей — всегда есть.
+    assert 'class="detail-block plan-block"' not in html
+    assert "Мысли модели" in html
 
 
 def test_report_escapes_html_in_strategy():
