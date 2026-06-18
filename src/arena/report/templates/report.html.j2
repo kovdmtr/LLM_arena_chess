@@ -68,10 +68,14 @@
     .eval { color: #57534e; font-size: .85rem; }
     /* --- интерактивный плеер: одна доска + перемотка ходов --- */
     .replay-stage { display: flex; gap: 1.25rem; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
-    .replay-boards { width: {{ board_size }}px; max-width: 100%; }
+    .replay-boards { width: {{ board_size }}px; max-width: 100%; position: relative; }
     .replay-boards .frame-board { display: none; }
     .replay-boards .frame-board.is-active { display: block; }
     .replay-boards svg { width: 100%; height: auto; display: block; }
+    .anim-patch, .anim-piece { position: absolute; pointer-events: none; }
+    .anim-patch { z-index: 1; }
+    .anim-piece { z-index: 2; transition: transform .48s ease-in-out; }
+    .anim-piece svg { width: 100%; height: 100%; display: block; }
     .replay-side { flex: 1; min-width: 240px; max-width: 460px; }
     .replay-detail { display: none; background: #fff; border: 1px solid #e7e5e4; border-radius: .5rem; padding: 1rem; }
     .replay-detail.is-active { display: block; }
@@ -235,7 +239,12 @@
       var boards = root.querySelectorAll(".frame-board");
       var details = root.querySelectorAll(".replay-detail");
       var items = root.querySelectorAll(".replay-moves .mv-cell[data-frame]");
+      var stage = root.querySelector(".replay-boards");
+      var REPLAY_ANIM = {{ replay_anim|tojson }};
+      var PIECE_SVG = {{ piece_svgs|tojson }};
+      var LIGHT = "#ffce9e", DARK = "#d18b47", ANIM_MS = 480;
       var current = -1;
+      var animTimer = null, animNodes = [], animAfter = null;
 
       function setActive(nodes, frame) {
         for (var i = 0; i < nodes.length; i++) {
@@ -245,15 +254,75 @@
         }
       }
 
+      function setBox(el, center, sq) {
+        el.style.left = (center[0] * 100 - sq * 50) + "%";
+        el.style.top = (center[1] * 100 - sq * 50) + "%";
+        el.style.width = (sq * 100) + "%";
+        el.style.height = (sq * 100) + "%";
+      }
+
+      function completeAnim() {
+        for (var i = 0; i < animNodes.length; i++) {
+          if (animNodes[i].parentNode) animNodes[i].parentNode.removeChild(animNodes[i]);
+        }
+        animNodes = [];
+        animTimer = null;
+        var after = animAfter; animAfter = null;
+        if (after) after();
+      }
+
+      function finishAnim() {  // досрочно завершить анимацию (новый переход/перемотка)
+        if (animTimer === null) return;
+        clearTimeout(animTimer);
+        completeAnim();
+      }
+
+      // Скольжение фигур поверх предыдущей доски, затем активируется целевая.
+      function slide(anim, after) {
+        var w = stage.clientWidth;
+        var pieces = [];
+        anim.moves.forEach(function (sub) {
+          var patch = document.createElement("div");
+          patch.className = "anim-patch";
+          setBox(patch, sub.from, anim.sq);
+          patch.style.background = sub.fromLight ? LIGHT : DARK;
+          var pc = document.createElement("div");
+          pc.className = "anim-piece";
+          pc.innerHTML = PIECE_SVG[sub.pc] || "";
+          setBox(pc, sub.from, anim.sq);
+          pc._dx = (sub.to[0] - sub.from[0]) * w;
+          pc._dy = (sub.to[1] - sub.from[1]) * w;
+          stage.appendChild(patch);
+          stage.appendChild(pc);
+          animNodes.push(patch, pc);
+          pieces.push(pc);
+        });
+        void stage.offsetWidth;  // reflow, чтобы transition сработал
+        pieces.forEach(function (pc) {
+          pc.style.transform = "translate(" + pc._dx + "px," + pc._dy + "px)";
+        });
+        animAfter = after;
+        animTimer = setTimeout(completeAnim, ANIM_MS);
+      }
+
       function show(frame) {
         frame = Math.max(0, Math.min(total, frame));
+        finishAnim();
         if (frame === current) return;
+        var prev = current;
         current = frame;
-        setActive(boards, frame);
-        setActive(details, frame);
-        setActive(items, frame);
         if (slider) slider.value = frame;
         if (counter) counter.textContent = frame + " / " + total;
+        setActive(details, frame);
+        setActive(items, frame);
+        // Скольжение только на шаг вперёд; назад/перемотка — мгновенно.
+        var anim = (stage && REPLAY_ANIM && prev >= 0 && frame === prev + 1)
+          ? REPLAY_ANIM[frame] : null;
+        if (anim) {
+          slide(anim, function () { setActive(boards, frame); });
+        } else {
+          setActive(boards, frame);
+        }
       }
 
       root.querySelectorAll("[data-nav]").forEach(function (btn) {

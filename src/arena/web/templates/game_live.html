@@ -87,15 +87,79 @@
     thoughtsEl.appendChild(body);
   }
 
-  ws.onmessage = function (event) {
-    const msg = JSON.parse(event.data);
+  // --- скольжение фигуры: наложение поверх доски едет from→to, затем доска
+  //     подменяется снимком после хода (см. live.enrich_event/anim) ---
+  const LIGHT = "#ffce9e", DARK = "#d18b47", ANIM_MS = 480, MOVE_GAP_MS = 140;
+
+  function setBox(el, center, sq) {
+    el.style.left = (center[0] * 100 - sq * 50) + "%";
+    el.style.top = (center[1] * 100 - sq * 50) + "%";
+    el.style.width = (sq * 100) + "%";
+    el.style.height = (sq * 100) + "%";
+  }
+
+  function slide(anim, done) {
+    const w = boardEl.clientWidth;
+    const pieces = [];
+    anim.moves.forEach(function (sub) {
+      const patch = document.createElement("div");
+      patch.className = "anim-patch";
+      setBox(patch, sub.from, anim.sq);
+      patch.style.background = sub.fromLight ? LIGHT : DARK;
+      const pc = document.createElement("div");
+      pc.className = "anim-piece";
+      pc.innerHTML = sub.piece;
+      setBox(pc, sub.from, anim.sq);
+      pc._dx = (sub.to[0] - sub.from[0]) * w;
+      pc._dy = (sub.to[1] - sub.from[1]) * w;
+      boardEl.appendChild(patch);
+      boardEl.appendChild(pc);
+      pieces.push(pc);
+    });
+    void boardEl.offsetWidth;  // reflow, чтобы transition сработал
+    pieces.forEach(function (pc) {
+      pc.style.transform = "translate(" + pc._dx + "px," + pc._dy + "px)";
+    });
+    setTimeout(done, ANIM_MS);
+  }
+
+  function animateBoard(p, done) {
+    if (!p.svg) { done(); return; }
+    // Нет текущей доски (первый кадр) или нет данных анимации → меняем сразу.
+    if (!boardEl.querySelector("svg") || !p.anim) {
+      boardEl.innerHTML = p.svg;
+      done();
+      return;
+    }
+    slide(p.anim, function () { boardEl.innerHTML = p.svg; done(); });
+  }
+
+  // Кадры обрабатываются по одному (очередь) — так буферный «залп» ходов
+  // проигрывается размеренно, а не мгновенно.
+  const queue = [];
+  let busy = false;
+
+  function pump() {
+    if (busy) return;
+    const msg = queue.shift();
+    if (!msg) return;
+    handle(msg);
+  }
+
+  function handle(msg) {
     const p = msg.payload || {};
+    if (msg.type === "move") {
+      busy = true;
+      addMove(p);
+      showThoughts(p);
+      animateBoard(p, function () {
+        setTimeout(function () { busy = false; pump(); }, MOVE_GAP_MS);
+      });
+      return;
+    }
     if (p.svg) boardEl.innerHTML = p.svg;
     if (msg.type === "game_start") {
       statusEl.textContent = "Партия идёт…";
-    } else if (msg.type === "move") {
-      addMove(p);
-      showThoughts(p);
     } else if (msg.type === "status") {
       statusEl.textContent = `Завершено: ${p.result} (${p.termination || p.status})` +
         " — открываю анализ…";
@@ -104,6 +168,12 @@
     } else if (msg.type === "error") {
       statusEl.textContent = "Ошибка: " + (p.message || "неизвестная");
     }
+    pump();
+  }
+
+  ws.onmessage = function (event) {
+    queue.push(JSON.parse(event.data));
+    pump();
   };
   ws.onclose = function () {
     if (statusEl.textContent === "Подключение…") statusEl.textContent = "Соединение закрыто.";

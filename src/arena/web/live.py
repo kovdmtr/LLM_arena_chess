@@ -18,7 +18,7 @@ import asyncio
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from arena.report import render_board_svg
+from arena.report import move_animation, piece_svg, render_board_svg
 from arena.web.games import GameSession
 
 # Пауза между опросами буфера событий фоновой партии (с).
@@ -29,8 +29,10 @@ def enrich_event(event: dict, session: GameSession) -> dict:
     """Дополнить событие данными для отрисовки: SVG доски и рассуждение хода.
 
     К любому событию с позицией (`fen` в нагрузке) добавляется ``svg`` (inline-доска,
-    с подсветкой хода по `uci`, если есть). К событиям хода (`move`) добавляется
-    ``reasoning`` соответствующего ``MoveRecord``. Исходное событие не мутируется.
+    с подсветкой хода по `uci`, если есть). К событиям хода (`move`) добавляются
+    ``reasoning`` соответствующего ``MoveRecord`` и ``anim`` — данные скольжения
+    фигуры (центры from/to в долях доски + inline-SVG фигуры) для плавного хода на
+    фронте. Исходное событие не мутируется.
     """
     payload = event["payload"]
     data = dict(payload)
@@ -41,7 +43,13 @@ def enrich_event(event: dict, session: GameSession) -> dict:
     if event["type"] == "move" and isinstance(ply, int):
         index = ply - 1
         if 0 <= index < len(session.record.moves):
-            data["reasoning"] = session.record.moves[index].reasoning
+            record = session.record.moves[index]
+            data["reasoning"] = record.reasoning
+            anim = move_animation(record.fen_before, record.uci)
+            if anim is not None:
+                for sub in anim["moves"]:
+                    sub["piece"] = piece_svg(sub["pc"]) if sub["pc"] else ""
+                data["anim"] = anim
     return {"type": event["type"], "payload": data}
 
 

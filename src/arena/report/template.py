@@ -24,6 +24,7 @@ from markupsafe import Markup
 from arena.analysis import classification_glyph
 from arena.core import build_pgn
 from arena.models import GameRecord
+from arena.report.animation import move_animation, piece_svgs
 from arena.report.board_image import DEFAULT_SIZE, render_board_svg, render_move_svg
 
 # Имя шаблона отчёта внутри ``templates/``.
@@ -95,6 +96,15 @@ def render_report_html(
             )
         )
 
+    # Данные скольжения фигур для плеера: на каждый ход — центры from/to и символы
+    # фигур (карта символ→SVG передаётся отдельно, чтобы не дублировать SVG).
+    # Индекс i массива соответствует кадру i (ход i); индекс 0 — стартовая позиция.
+    replay_anim = None
+    piece_map = None
+    if include_boards and game.moves:
+        replay_anim = [None] + [move_animation(m.fen_before, m.uci) for m in game.moves]
+        piece_map = piece_svgs()
+
     # PGN встраивается в отчёт (а не тянется по сети), чтобы кнопка «Скачать PGN»
     # работала и на сайте, и в сохранённом offline-отчёте (self-contained, D-013).
     pgn = build_pgn(game, event=event)
@@ -115,6 +125,8 @@ def render_report_html(
         ),
         start_board=start_board,
         board_size=board_size,
+        replay_anim=replay_anim,
+        piece_svgs=piece_map,
         pgn=pgn,
         pgn_filename=f"{game.id}.pgn",
         home_url=home_url,
