@@ -4,9 +4,12 @@
 FROM python:3.11-slim
 
 # Stockfish — для ★-подсказок и пост-анализа. Без него приложение работает,
-# но ★-функции деградируют (D-008). Из PATH движок берётся по имени "stockfish".
+# но ★-функции деградируют (D-008). Пакет ставит бинарник в /usr/games/, которого
+# нет в PATH процесса uvicorn → симлинкуем в /usr/local/bin, чтобы движок находился
+# по имени "stockfish" (как ждёт config.yaml).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends stockfish \
+    && ln -sf /usr/games/stockfish /usr/local/bin/stockfish \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
