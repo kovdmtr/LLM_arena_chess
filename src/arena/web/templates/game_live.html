@@ -8,7 +8,7 @@
     <ol id="live-moves" class="live-moves"></ol>
   </div>
   <p class="hint">Просмотр идёт в реальном времени по WebSocket. По завершении
-    партии откройте страницу снова, чтобы увидеть отчёт с интерактивным плеером.</p>
+    партии страница сама откроет отчёт с анализом и интерактивным плеером.</p>
 </section>
 
 <script>
@@ -33,7 +33,10 @@
       li.textContent = `${num} ${p.san}` + (p.reasoning ? ` — ${p.reasoning}` : "");
       movesEl.appendChild(li);
     } else if (msg.type === "status") {
-      statusEl.textContent = `Завершено: ${p.result} (${p.termination || p.status})`;
+      statusEl.textContent = `Завершено: ${p.result} (${p.termination || p.status})` +
+        " — открываю анализ…";
+      // Партия окончена → перезагружаем страницу: тот же URL отдаст отчёт с анализом.
+      setTimeout(function () { location.reload(); }, 1500);
     } else if (msg.type === "error") {
       statusEl.textContent = "Ошибка: " + (p.message || "неизвестная");
     }

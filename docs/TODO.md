@@ -113,6 +113,7 @@
 ## Мелкие улучшения
 - [x] `feat(report): download PGN button` — кнопка «Скачать PGN» в отчёте; PGN встроен в страницу (Blob-скачивание), работает и на сайте, и в offline-отчёте (self-contained).
 - [x] `chore(deploy): docker deployment` — `Dockerfile` (Python 3.11 + Stockfish из apt, editable-install для резолва `config.yaml`), `docker-compose.yml` (порт на `127.0.0.1`, `env_file .env`, volume `games/`), `.dockerignore`, `deploy/DEPLOY.md` (безопасный деплой: смена пароля, отсутствие авторизации → nginx basic-auth/SSH-туннель/firewall).
+- [x] `feat(web): home link on report + live auto-opens analysis` — в отчёте партии ссылка «← На главную» (web передаёт `home_url="/"`; в offline-файле ссылки нет); live-страница по завершении партии сама перезагружается в отчёт с анализом.
 - [x] `feat(web): access by secret link` — middleware доступа «по ссылке»: при заданном `ARENA_ACCESS_TOKEN` пускают только с `?token=…` (→ cookie), иначе 403; health/static открыты; WS тоже под токеном; не задан → сайт открыт (обратная совместимость). Секрет — в `.env`/окружении (`Secrets.arena_access_token`).
 
 ## Бэклог (после Phase 8)

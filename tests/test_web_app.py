@@ -13,7 +13,9 @@ from arena.web import APP_TITLE, APP_VERSION, create_app
 
 
 def _client() -> TestClient:
-    return TestClient(create_app())
+    # access_token="" — явно выключаем доступ-по-ссылке, чтобы smoke-тесты не
+    # зависели от наличия ARENA_ACCESS_TOKEN в локальном .env разработчика.
+    return TestClient(create_app(access_token=""))
 
 
 def test_health_returns_ok():

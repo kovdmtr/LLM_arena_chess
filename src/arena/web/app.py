@@ -212,7 +212,7 @@ def create_app(
         record = manager.load_record(game_id)
         if record is None:
             raise HTTPException(status_code=404, detail="партия не найдена")
-        return HTMLResponse(render_report_html(record))
+        return HTMLResponse(render_report_html(record, home_url="/"))
 
     @app.get("/tournaments/new", response_class=HTMLResponse)
     def new_tournament(request: Request) -> HTMLResponse:

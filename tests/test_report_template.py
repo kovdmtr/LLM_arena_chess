@@ -369,3 +369,18 @@ def test_report_embedded_pgn_matches_build_pgn():
     expected = build_pgn(game, event="LLM Chess Arena")
     # Внутри <textarea> PGN HTML-экранирован — сверяем экранированную форму.
     assert str(escape(expected)) in html
+
+
+# --- ссылка «На главную» -----------------------------------------------------
+
+
+def test_report_shows_home_link_when_url_given():
+    html = render_report_html(_game(), home_url="/")
+    assert 'href="/"' in html
+    assert "На главную" in html
+
+
+def test_report_has_no_home_link_by_default():
+    # Без home_url (например, offline-файл отчёта) ссылки на сайт нет.
+    html = render_report_html(_game())
+    assert "На главную" not in html

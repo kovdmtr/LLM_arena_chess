@@ -76,6 +76,7 @@ def render_report_html(
     include_boards: bool = True,
     board_size: int = DEFAULT_SIZE,
     orientation: str = "white",
+    home_url: str | None = None,
 ) -> str:
     """Собрать строку HTML-отчёта из ``game``.
 
@@ -116,4 +117,5 @@ def render_report_html(
         board_size=board_size,
         pgn=pgn,
         pgn_filename=f"{game.id}.pgn",
+        home_url=home_url,
     )

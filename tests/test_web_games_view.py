@@ -129,6 +129,7 @@ def test_game_detail_finished_renders_report(tmp_path):
     # отчёт показывает игроков и итог.
     assert "White Bot" in resp.text
     assert "0-1" in resp.text
+    assert "На главную" in resp.text  # ссылка домой (web передаёт home_url)
 
 
 def test_game_detail_running_shows_live_page(tmp_path):
@@ -146,6 +147,8 @@ def test_game_detail_running_shows_live_page(tmp_path):
         assert "WebSocket" in resp.text  # live-страница, а не отчёт
         assert f'data-game-id="{session.id}"' in resp.text
         assert "live-board" in resp.text
+        # по завершении партии страница сама перезагрузится в отчёт с анализом.
+        assert "location.reload" in resp.text
     finally:
         gate.set()
         session.join(timeout=5)
