@@ -25,6 +25,14 @@ from arena.models import MoveRecord, Side
 # Размер стороны доски в пикселях по умолчанию.
 DEFAULT_SIZE = 360
 
+# Зелёная подсветка последнего хода (вместо дефолтной жёлто-оливковой
+# ``python-chess``): сыгранная фигура стоит под зелёной клеткой. Переопределяем
+# только клетки хода — остальные цвета берутся из дефолтов ``chess.svg``.
+_LASTMOVE_COLORS = {
+    "square light lastmove": "#a3d977",
+    "square dark lastmove": "#74b34a",
+}
+
 
 class PngUnavailableError(RuntimeError):
     """PNG-рендер недоступен: не установлена опциональная зависимость ``cairosvg``."""
@@ -60,6 +68,7 @@ def render_board_svg(
         lastmove=lastmove,
         check=check,
         coordinates=coordinates,
+        colors=_LASTMOVE_COLORS,
     )
 
 

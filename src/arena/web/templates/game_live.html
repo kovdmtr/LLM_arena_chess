@@ -1,11 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="game-live" data-game-id="{{ game_id }}">
+<section class="game-live" data-game-id="{{ game_id }}" data-white="{{ white }}" data-black="{{ black }}">
   <h2>{{ white }} <span class="vs">vs</span> {{ black }}</h2>
   <p id="live-status" class="live-status">Подключение…</p>
   <div class="live-layout">
     <div id="live-board" class="live-board">Ожидание позиции…</div>
-    <ol id="live-moves" class="live-moves"></ol>
+    <div class="live-side">
+      <div class="live-panel">
+        <div class="live-panel-label">Ходы</div>
+        <div id="live-moves" class="live-moves"></div>
+      </div>
+      <div class="live-panel">
+        <div class="live-panel-label">Мысли модели</div>
+        <div id="live-thoughts" class="live-thoughts">
+          <p class="live-thoughts-empty">Партия ещё не началась…</p>
+        </div>
+      </div>
+    </div>
   </div>
   <p class="hint">Просмотр идёт в реальном времени по WebSocket. По завершении
     партии страница сама откроет отчёт с анализом и интерактивным плеером.</p>
@@ -15,11 +26,66 @@
 (function () {
   const root = document.querySelector(".game-live");
   const gameId = root.dataset.gameId;
+  const whiteName = root.dataset.white;
+  const blackName = root.dataset.black;
   const statusEl = document.getElementById("live-status");
   const boardEl = document.getElementById("live-board");
   const movesEl = document.getElementById("live-moves");
+  const thoughtsEl = document.getElementById("live-thoughts");
   const proto = location.protocol === "https:" ? "wss" : "ws";
   const ws = new WebSocket(`${proto}://${location.host}/games/${gameId}/ws`);
+  let lastRow = null;
+
+  function cell(cls, text) {
+    const span = document.createElement("span");
+    span.className = cls;
+    span.textContent = text;
+    return span;
+  }
+
+  function newRow(moveNo, whiteSan) {
+    const row = document.createElement("div");
+    row.className = "mv-row";
+    row.appendChild(cell("mv-num", moveNo + "."));
+    row.appendChild(cell("mv-w", whiteSan));
+    row.appendChild(cell("mv-b", ""));
+    movesEl.appendChild(row);
+    return row;
+  }
+
+  // Ходы пишутся парами: белый открывает строку, чёрный дописывает её правую клетку.
+  function addMove(p) {
+    const isWhite = p.ply % 2 === 1;
+    const moveNo = Math.floor((p.ply - 1) / 2) + 1;
+    if (isWhite) {
+      lastRow = newRow(moveNo, p.san);
+    } else {
+      if (!lastRow) lastRow = newRow(moveNo, "…");  // подстраховка
+      lastRow.querySelector(".mv-b").textContent = p.san;
+    }
+    movesEl.querySelectorAll(".is-current").forEach(function (el) {
+      el.classList.remove("is-current");
+    });
+    lastRow.querySelector(isWhite ? ".mv-w" : ".mv-b").classList.add("is-current");
+    movesEl.scrollTop = movesEl.scrollHeight;
+  }
+
+  // Блок «мысли текущей модели»: рассуждение только что сходившей стороны.
+  function showThoughts(p) {
+    const isWhite = p.ply % 2 === 1;
+    const moveNo = Math.floor((p.ply - 1) / 2) + 1;
+    const num = isWhite ? (moveNo + ".") : (moveNo + "...");
+    const who = isWhite ? whiteName : blackName;
+    thoughtsEl.innerHTML = "";
+    const head = document.createElement("div");
+    head.className = "live-thoughts-head";
+    head.textContent = num + " " + p.san + " · " + who;
+    const body = document.createElement("p");
+    body.className = "live-thoughts-body" + (p.reasoning ? "" : " empty");
+    body.textContent = p.reasoning || "(без объяснения)";
+    thoughtsEl.appendChild(head);
+    thoughtsEl.appendChild(body);
+  }
 
   ws.onmessage = function (event) {
     const msg = JSON.parse(event.data);
@@ -28,10 +94,8 @@
     if (msg.type === "game_start") {
       statusEl.textContent = "Партия идёт…";
     } else if (msg.type === "move") {
-      const li = document.createElement("li");
-      const num = (p.ply % 2 === 1) ? (Math.floor(p.ply / 2) + 1) + "." : (p.ply / 2) + "...";
-      li.textContent = `${num} ${p.san}` + (p.reasoning ? ` — ${p.reasoning}` : "");
-      movesEl.appendChild(li);
+      addMove(p);
+      showThoughts(p);
     } else if (msg.type === "status") {
       statusEl.textContent = `Завершено: ${p.result} (${p.termination || p.status})` +
         " — открываю анализ…";

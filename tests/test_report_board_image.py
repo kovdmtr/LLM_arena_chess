@@ -57,6 +57,15 @@ def test_render_board_svg_highlights_lastmove():
     assert len(highlighted) > len(plain)
 
 
+def test_render_board_svg_lastmove_highlight_is_green():
+    # Клетки сыгранного хода подсвечены зелёным (e2/e4 — светлые клетки),
+    # а не дефолтным жёлто-оливковым python-chess.
+    svg = render_board_svg(_AFTER_E4, lastmove_uci="e2e4")
+    assert "#a3d977" in svg
+    assert "#cdd16a" not in svg  # дефолтная светлая подсветка
+    assert "#aaa23b" not in svg  # дефолтная тёмная подсветка
+
+
 def test_render_board_svg_marks_check():
     # «Детский мат»: после Qxf7# чёрный король под шахом → клетка короля подсвечена.
     board = chess.Board()
