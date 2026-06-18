@@ -78,6 +78,7 @@ class AnalysisConfig(BaseModel):
     """
 
     enabled: bool = True
+    good_cp: int = 20
     inaccuracy_cp: int = 50
     mistake_cp: int = 120
     blunder_cp: int = 300

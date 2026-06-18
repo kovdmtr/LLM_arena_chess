@@ -165,6 +165,20 @@ def test_report_player_move_list_is_navigable():
     assert 'data-frame="2"' in html
 
 
+def test_report_move_cells_are_colored_by_classification():
+    # Каждый размеченный ход несёт класс оценки (g-<class>) → CSS красит его цветом.
+    game = _game(["e4", "e5", "Bc4"])
+    game.moves[0].classification = "brilliant"
+    game.moves[1].classification = "blunder"
+    game.moves[2].classification = "normal"
+    html = render_report_html(game)
+    assert 'class="mv-cell g-brilliant"' in html
+    assert 'class="mv-cell g-blunder"' in html
+    assert 'class="mv-cell g-normal"' in html  # просто ход тоже помечен (нейтральный цвет)
+    # CSS определяет цвета классов (включая синий для блестящего).
+    assert ".g-brilliant { color: #1d4ed8; }" in html
+
+
 def test_report_player_without_boards_keeps_navigation():
     html = render_report_html(_game(["e4", "e5"]), include_boards=False)
     # Без досок плеер всё равно перематывает ходы (детали + список), но без SVG.

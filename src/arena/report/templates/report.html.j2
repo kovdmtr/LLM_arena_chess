@@ -49,8 +49,10 @@
       border-radius: .25rem; background: #e7e5e4; color: #44403c; margin-left: .4rem;
       text-transform: uppercase; letter-spacing: .03em;
     }
-    .badge.brilliant { background: #cffafe; color: #155e75; }
+    .badge.brilliant { background: #dbeafe; color: #1d4ed8; }
     .badge.good { background: #dcfce7; color: #166534; }
+    .badge.interesting { background: #cffafe; color: #0e7490; }
+    .badge.normal { background: #f5f5f4; color: #57534e; }
     .badge.book { background: #ede9fe; color: #5b21b6; }
     .badge.inaccuracy { background: #fef9c3; color: #854d0e; }
     .badge.mistake { background: #ffedd5; color: #9a3412; }
@@ -102,9 +104,17 @@
     .replay-moves .mv-num { color: #78716c; font-variant-numeric: tabular-nums; }
     .replay-moves .mv-cell { cursor: pointer; padding: .12rem .4rem; border-radius: .25rem; }
     .replay-moves .mv-cell:hover { background: #ecfccb; }
-    .replay-moves .mv-cell.is-current { background: #dcfce7; color: #166534; font-weight: 600; }
+    .replay-moves .mv-cell.is-current { background: #dcfce7; font-weight: 600; }
     .replay-moves .mv-cell.empty { cursor: default; }
-    .replay-moves .glyph { margin-left: .15rem; }
+    .replay-moves .glyph { margin-left: .15rem; color: inherit; }
+    /* Цвет хода по классу качества (глиф наследует цвет ячейки). */
+    .replay-moves .g-brilliant { color: #1d4ed8; }
+    .replay-moves .g-good { color: #15803d; }
+    .replay-moves .g-interesting { color: #0e7490; }
+    .replay-moves .g-inaccuracy { color: #a16207; }
+    .replay-moves .g-mistake { color: #c2410c; }
+    .replay-moves .g-blunder { color: #b91c1c; }
+    .replay-moves .g-normal, .replay-moves .g-book { color: #57534e; }
     footer { text-align: center; color: #a8a29e; font-size: .8rem; margin-top: 2rem; }
     .report-actions { margin: .75rem 0 0; }
     .dl-btn {
@@ -224,7 +234,7 @@
     <div class="replay-moves">
       {% for m in moves %}
       {% if loop.index0 % 2 == 0 %}<div class="mv-row"><span class="mv-num">{{ loop.index0 // 2 + 1 }}.</span>{% endif %}
-        <span class="mv-cell" data-frame="{{ loop.index }}">{{ m.record.san }}{% if m.record.classification|glyph %}<span class="glyph">{{ m.record.classification|glyph }}</span>{% endif %}</span>
+        <span class="mv-cell{% if m.record.classification %} g-{{ m.record.classification }}{% endif %}" data-frame="{{ loop.index }}">{{ m.record.san }}{% if m.record.classification|glyph %}<span class="glyph">{{ m.record.classification|glyph }}</span>{% endif %}</span>
       {% if loop.index0 % 2 == 1 or loop.last %}{% if loop.last and loop.index0 % 2 == 0 %}<span class="mv-cell empty"></span>{% endif %}</div>{% endif %}
       {% endfor %}
     </div>

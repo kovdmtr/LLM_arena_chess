@@ -11,9 +11,12 @@ from arena.models import Classification
 def test_glyph_for_each_class():
     assert classification_glyph("brilliant") == "!!"
     assert classification_glyph("good") == "!"
+    assert classification_glyph("interesting") == "!?"
     assert classification_glyph("inaccuracy") == "?!"
     assert classification_glyph("mistake") == "?"
     assert classification_glyph("blunder") == "??"
+    # «просто ход» и дебютная теория глифом не помечаются.
+    assert classification_glyph("normal") == ""
     assert classification_glyph("book") == ""
 
 

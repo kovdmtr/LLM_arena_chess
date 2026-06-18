@@ -13,8 +13,10 @@ import pytest
 from arena.analysis import ClassificationThresholds, classify_cpl
 from arena.config.settings import AnalysisConfig, AppConfig
 
-# Стандартные пороги для границ: inaccuracy 50, mistake 120, blunder 300.
-T = ClassificationThresholds(inaccuracy_cp=50, mistake_cp=120, blunder_cp=300)
+# Стандартные пороги для границ: good 20, inaccuracy 50, mistake 120, blunder 300.
+T = ClassificationThresholds(
+    good_cp=20, inaccuracy_cp=50, mistake_cp=120, blunder_cp=300
+)
 
 
 # --- границы classify_cpl ----------------------------------------------------
@@ -23,7 +25,9 @@ T = ClassificationThresholds(inaccuracy_cp=50, mistake_cp=120, blunder_cp=300)
     "cpl, expected",
     [
         (0, "good"),
-        (49, "good"),         # на 1 ниже порога неточности
+        (20, "good"),         # ровно порог хорошего хода
+        (21, "normal"),       # на 1 выше → просто ход
+        (49, "normal"),       # на 1 ниже порога неточности
         (50, "inaccuracy"),   # ровно порог неточности
         (119, "inaccuracy"),  # на 1 ниже порога ошибки
         (120, "mistake"),     # ровно порог ошибки
@@ -43,17 +47,20 @@ def test_negative_cpl_is_clamped_to_good():
 
 
 def test_classify_cpl_never_returns_heuristic_classes():
-    # classify_cpl даёт только градиентные классы; brilliant/book решаются отдельно.
+    # classify_cpl даёт только градиентные классы; brilliant/interesting/book — отдельно.
     produced = {classify_cpl(cpl, T) for cpl in range(0, 1000, 7)}
-    assert produced <= {"good", "inaccuracy", "mistake", "blunder"}
+    assert produced <= {"good", "normal", "inaccuracy", "mistake", "blunder"}
     assert "brilliant" not in produced
+    assert "interesting" not in produced
     assert "book" not in produced
 
 
 def test_custom_thresholds_change_classification():
     # Пороги конфигурируемы (D-009): тот же cpl при строгих порогах — другой класс.
-    strict = ClassificationThresholds(inaccuracy_cp=20, mistake_cp=40, blunder_cp=80)
-    assert classify_cpl(30, T) == "good"         # при стандартных — good
+    strict = ClassificationThresholds(
+        good_cp=10, inaccuracy_cp=20, mistake_cp=40, blunder_cp=80
+    )
+    assert classify_cpl(30, T) == "normal"           # при стандартных — просто ход
     assert classify_cpl(30, strict) == "inaccuracy"  # при строгих — неточность
     assert classify_cpl(100, strict) == "blunder"
 
@@ -83,8 +90,13 @@ def test_negative_threshold_rejected():
 
 def test_default_thresholds_match_documented_values():
     d = ClassificationThresholds()
-    assert (d.inaccuracy_cp, d.mistake_cp, d.blunder_cp) == (50, 120, 300)
+    assert (d.good_cp, d.inaccuracy_cp, d.mistake_cp, d.blunder_cp) == (20, 50, 120, 300)
     assert (d.brilliant_max_cpl, d.brilliant_min_eval_cp) == (10, 100)
+
+
+def test_good_cp_must_not_exceed_inaccuracy():
+    with pytest.raises(ValueError, match="должны возрастать"):
+        ClassificationThresholds(good_cp=60, inaccuracy_cp=50)
 
 
 # --- согласование с конфигом -------------------------------------------------

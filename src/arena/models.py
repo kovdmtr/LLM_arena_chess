@@ -36,7 +36,8 @@ Role = Literal["system", "user", "assistant"]
 
 # Классы качества хода из пост-анализа (D-009). ``book`` — дебютная теория.
 Classification = Literal[
-    "book", "brilliant", "good", "inaccuracy", "mistake", "blunder"
+    "book", "brilliant", "good", "interesting",
+    "normal", "inaccuracy", "mistake", "blunder",
 ]
 
 # Статус стратегического плана относительно прошлого хода стороны (фича «стратегия»).

@@ -107,10 +107,10 @@ def test_cpl_computed_from_both_evals_and_classified():
 
     summary = analyze_game(game, engine, thresholds=THRESHOLDS)
 
-    # cpl(m1)=20+10=30 → good; cpl(m2)=10+50=60 → inaccuracy;
+    # cpl(m1)=20+10=30 → normal (просто ход, >good_cp); cpl(m2)=10+50=60 → inaccuracy;
     # cpl(m3)=50+270=320 → blunder; cpl(m4)=270-260=10 → good.
     assert [m.classification for m in game.moves] == [
-        "good", "inaccuracy", "blunder", "good",
+        "normal", "inaccuracy", "blunder", "good",
     ]
     # Оценка хода хранится с POV белых (для хода чёрных — со знаком минус).
     assert game.moves[0].engine_eval_cp == -10   # -eval(s1)
@@ -130,7 +130,7 @@ def test_summary_aggregates_accuracy_counters_and_key_moments():
 
     summary = analyze_game(game, engine, thresholds=THRESHOLDS)
 
-    # белые: good + blunder → точность 0.5, один зевок.
+    # белые: normal + blunder → точность 0.5 (normal «точен»), один зевок.
     assert summary.white.accuracy == 0.5
     assert summary.white.blunders == 1
     assert summary.white.mistakes == 0
@@ -209,6 +209,20 @@ def test_best_quiet_move_is_good_not_brilliant():
     analyze_game(game, engine, thresholds=THRESHOLDS)
 
     assert game.moves[0].classification == "good"
+
+
+def test_best_sacrifice_in_unclear_position_is_interesting():
+    # Та же жертва ферзя, но перевес после хода не дотягивает до порога блестящего
+    # (eval в коридоре ±brilliant_min_eval_cp) → «интересный» (!?), а не «блестящий».
+    game = _single_move_game(_SAC_FEN, "Qxd5")
+    before = game.moves[0].fen_before
+    after = game.moves[0].fen_after
+    # cpl=max(0, 40-50)=0 (почти лучший), eval_mover_after=50 (< 100 и > -100).
+    engine = _FakeEval({before: 40, after: -50})
+
+    analyze_game(game, engine, thresholds=THRESHOLDS)
+
+    assert game.moves[0].classification == "interesting"
 
 
 # --- деградация без движка (D-008) -------------------------------------------

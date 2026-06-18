@@ -59,8 +59,10 @@ _PIECE_VALUE: dict[int, int] = {
     chess.KING: _MATE_SCORE,
 }
 
-# Классы, считающиеся «точными» при расчёте accuracy.
-_ACCURATE: frozenset[Classification] = frozenset({"good", "brilliant", "book"})
+# Классы, считающиеся «точными» при расчёте accuracy (не ухудшают позицию).
+_ACCURATE: frozenset[Classification] = frozenset(
+    {"good", "brilliant", "interesting", "normal", "book"}
+)
 
 # Классы, попадающие в ключевые моменты партии.
 _KEY_CLASSES: frozenset[Classification] = frozenset({"brilliant", "mistake", "blunder"})
@@ -134,6 +136,8 @@ def _analyze_move(
     classification = classify_cpl(cpl, thresholds)
     if _is_brilliant(record, cpl, eval_mover_after, thresholds):
         classification = "brilliant"
+    elif _is_interesting(record, cpl, eval_mover_after, thresholds):
+        classification = "interesting"
 
     # Сохраняем оценку с POV белых (как у eval-бара): для хода чёрных — со знаком минус.
     eval_white = eval_mover_after if record.side == "white" else -eval_mover_after
@@ -167,6 +171,28 @@ def _is_brilliant(
     if cpl > thresholds.brilliant_max_cpl:
         return False
     if eval_mover_after < thresholds.brilliant_min_eval_cp:
+        return False
+    board_before = chess.Board(record.fen_before)
+    move = chess.Move.from_uci(record.uci)
+    return _is_sacrifice(board_before, move)
+
+
+def _is_interesting(
+    record: MoveRecord,
+    cpl: int,
+    eval_mover_after: int,
+    thresholds: ClassificationThresholds,
+) -> bool:
+    """Эвристика «интересный» (``!?``): почти лучшая жертва, но позиция неясная.
+
+    Тот же критерий, что и «блестящий» (почти лучший ход + жертва материала), но
+    перевес после хода НЕ достигает порога блестящего (``< brilliant_min_eval_cp``),
+    оставаясь при этом не проигрышным (``> -brilliant_min_eval_cp``) — спекулятивная,
+    острая жертва, заслуживающая внимания, но требующая проверки.
+    """
+    if cpl > thresholds.brilliant_max_cpl:
+        return False
+    if not -thresholds.brilliant_min_eval_cp < eval_mover_after < thresholds.brilliant_min_eval_cp:
         return False
     board_before = chess.Board(record.fen_before)
     move = chess.Move.from_uci(record.uci)
