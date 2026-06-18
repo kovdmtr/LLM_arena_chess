@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ title }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+  <!-- Корень-относительный путь (не url_for): абсолютный URL от Starlette за nginx
+       без X-Forwarded-Proto выходит http:// и блокируется как mixed content на HTTPS. -->
+  <link rel="stylesheet" href="/static/app.css">
   {% block head %}{% endblock %}
 </head>
 <body>

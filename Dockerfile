@@ -25,4 +25,6 @@ RUN pip install --no-cache-dir -e . \
 # Секреты НЕ копируются в образ — они приходят как переменные окружения
 # (docker-compose env_file: .env). Артефакты партий — в volume ./games.
 EXPOSE 8000
-CMD ["uvicorn", "arena.web.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# --proxy-headers: доверять X-Forwarded-* от nginx (127.0.0.1) — чтобы приложение
+# знало исходную схему (https) за reverse-proxy и не генерировало http://-ссылок.
+CMD ["uvicorn", "arena.web.app:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]

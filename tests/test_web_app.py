@@ -36,7 +36,11 @@ def test_index_renders_html_page():
     assert "LLM Chess Arena" in resp.text
     # шаблон расширяет base.html → есть DOCTYPE и подключение статики.
     assert "<!DOCTYPE html>" in resp.text
-    assert "/static/app.css" in resp.text
+    # CSS подключается корень-относительным путём (а не абсолютным URL от Starlette):
+    # за nginx без X-Forwarded-Proto абсолютный url_for выходит http:// и на HTTPS
+    # блокируется как mixed content — стили не грузятся. Относительный путь от этого защищает.
+    assert 'href="/static/app.css"' in resp.text
+    assert 'href="http://' not in resp.text  # нет абсолютных http-ссылок на ассеты
     # главное меню ведёт и на новую партию, и на архив партий.
     assert 'href="/games/new"' in resp.text
     assert 'href="/games"' in resp.text
