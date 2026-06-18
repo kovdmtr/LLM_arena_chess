@@ -8,7 +8,6 @@ from arena import (
     AnalysisSummary,
     GameRecord,
     HintRecord,
-    KeyMoment,
     MoveRecord,
     PlayerAnalysis,
     PlayerInfo,
@@ -165,17 +164,6 @@ def test_report_player_without_boards_keeps_navigation():
     assert 'data-nav="next"' in html
 
 
-def test_report_key_moments_are_clickable_frames():
-    game = _game(["e4", "e5", "Bc4"])
-    game.analysis = AnalysisSummary(
-        key_moments=[KeyMoment(ply=2, classification="blunder")]
-    )
-    html = render_report_html(game)
-    # Ключевой момент несёт data-frame=ply → клик прыгает на этот кадр.
-    assert 'class="key-moments"' in html
-    assert 'data-frame="2"' in html
-
-
 # --- бейджи ★ (классификация / оценка) появляются только при наличии --------
 
 
@@ -196,16 +184,10 @@ def test_report_shows_classification_and_eval_when_present():
 
 
 def test_report_shows_chesscom_glyphs_for_classifications():
-    # глифы-аннотации рядом с бейджами (per-move и в ключевых моментах).
+    # глифы-аннотации рядом с per-move бейджами.
     game = _game()
     game.moves[0].classification = "brilliant"
     game.moves[-1].classification = "blunder"
-    game.analysis = AnalysisSummary(
-        key_moments=[
-            KeyMoment(ply=1, classification="brilliant"),
-            KeyMoment(ply=len(game.moves), classification="blunder"),
-        ]
-    )
     html = render_report_html(game)
     assert 'class="glyph"' in html
     assert "!!" in html  # brilliant
@@ -249,34 +231,6 @@ def test_report_shows_dash_for_missing_accuracy():
     html = render_report_html(game)
     assert "Анализ партии" in html
     assert "—" in html
-
-
-def test_report_shows_key_moments():
-    game = _game(["e4", "e5", "Bc4"])
-    game.analysis = AnalysisSummary(
-        key_moments=[
-            KeyMoment(ply=1, classification="brilliant", comment="сильный центр"),
-            KeyMoment(ply=2, classification="blunder"),
-        ]
-    )
-    html = render_report_html(game)
-    assert "brilliant" in html
-    assert "blunder" in html
-    # Комментарий ключевого момента отображается (и экранируется как обычный текст).
-    assert "сильный центр" in html
-    # Нумерация: 1-й полуход белых → "1.", 2-й чёрных → "1...".
-    assert "1." in html
-    assert "1..." in html
-
-
-def test_report_escapes_html_in_key_moment_comment():
-    game = _game(["e4"])
-    game.analysis = AnalysisSummary(
-        key_moments=[KeyMoment(ply=1, classification="mistake", comment="<i>x</i>")]
-    )
-    html = render_report_html(game)
-    assert "<i>x</i>" not in html
-    assert "&lt;i&gt;x" in html
 
 
 def test_report_shows_hint_when_present():

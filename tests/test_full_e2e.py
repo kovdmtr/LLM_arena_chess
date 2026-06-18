@@ -170,9 +170,8 @@ def test_full_report_is_self_contained_and_shows_star_features(tmp_path):
     assert html.lstrip().lower().startswith("<!doctype html>")
     assert "<svg" in html
     assert "<img" not in html
-    # ★ анализ и комментарий видны в отчёте.
+    # ★ анализ виден в отчёте (классификация хода — per-move бейдж).
     assert "blunder" in html.lower()
-    assert _FakeCommenter.SENTENCE in html
 
 
 def test_full_pipeline_artifacts_have_no_secrets(tmp_path):

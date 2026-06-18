@@ -34,12 +34,6 @@
     .analysis-side .accuracy { font-size: 1.4rem; font-weight: 700; }
     .analysis-side .accuracy .label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #78716c; }
     .analysis-side .counts { color: #57534e; font-size: .85rem; margin-top: .25rem; }
-    ul.key-moments { list-style: none; padding: 0; margin: 1rem auto 0; max-width: 520px; display: grid; gap: .35rem; }
-    ul.key-moments li {
-      background: #fff; border: 1px solid #e7e5e4; border-radius: .5rem;
-      padding: .4rem .75rem; font-size: .9rem;
-    }
-    ul.key-moments .comment { color: #57534e; }
     ol.moves { list-style: none; padding: 0; margin: 0; display: grid; gap: 1.25rem; }
     li.move {
       background: #fff; border: 1px solid #e7e5e4; border-radius: .5rem;
@@ -104,8 +98,6 @@
     ol.replay-moves li:hover { background: #f5f5f4; }
     ol.replay-moves li.is-current { background: #1c1917; color: #fafaf9; border-color: #1c1917; }
     ol.replay-moves li.is-current .num { color: #d6d3d1; }
-    .key-moments li[data-frame] { cursor: pointer; }
-    .key-moments li[data-frame]:hover { background: #f5f5f4; }
     footer { text-align: center; color: #a8a29e; font-size: .8rem; margin-top: 2rem; }
     .report-actions { margin: .75rem 0 0; }
     .dl-btn {
@@ -166,18 +158,6 @@
       </div>
       {% endfor %}
     </div>
-    {% if game.analysis.key_moments %}
-    <ul class="key-moments">
-      {% for km in game.analysis.key_moments %}
-      <li data-frame="{{ km.ply }}">
-        <span class="num">{{ (km.ply + 1) // 2 }}{% if km.ply % 2 == 1 %}.{% else %}...{% endif %}</span>
-        <span class="badge {{ km.classification }}">{{ km.classification }}</span>
-        {% if km.classification|glyph %}<span class="glyph">{{ km.classification|glyph }}</span>{% endif %}
-        {% if km.comment %}<span class="comment">{{ km.comment }}</span>{% endif %}
-      </li>
-      {% endfor %}
-    </ul>
-    {% endif %}
   </section>
   {% endif %}
 
@@ -250,8 +230,6 @@
       var boards = root.querySelectorAll(".frame-board");
       var details = root.querySelectorAll(".replay-detail");
       var items = root.querySelectorAll(".replay-moves li");
-      // Ключевые моменты живут в блоке анализа над плеером — тоже навигируют.
-      var keyMoments = document.querySelectorAll(".key-moments li[data-frame]");
       var current = -1;
 
       function setActive(nodes, frame) {
@@ -284,9 +262,6 @@
       });
       if (slider) slider.addEventListener("input", function () { show(parseInt(slider.value, 10)); });
       items.forEach(function (el) {
-        el.addEventListener("click", function () { show(parseInt(el.dataset.frame, 10)); });
-      });
-      keyMoments.forEach(function (el) {
         el.addEventListener("click", function () { show(parseInt(el.dataset.frame, 10)); });
       });
       document.addEventListener("keydown", function (e) {
