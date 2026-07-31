@@ -20,11 +20,14 @@ from pydantic import BaseModel
 
 from arena.config import ConfigError, ModelCatalog
 from arena.core import build_pgn
+from arena.models import PlayerInfo
 from arena.providers import ProviderError
 from arena.web.games import STATUS_FINISHED, GameInfo, GameManager
+from arena.web.tournaments import TournamentInfo, TournamentManager
 
 CatalogGetter = Callable[[Any], ModelCatalog]
 ManagerGetter = Callable[[Any], GameManager]
+TournamentManagerGetter = Callable[[Any], TournamentManager]
 
 # Имя файла в Content-Disposition собираем только из безопасных символов.
 _UNSAFE_FILENAME = re.compile(r"[^A-Za-z0-9._-]")
@@ -37,10 +40,20 @@ class StartGameRequest(BaseModel):
     black: str
 
 
+class StartTournamentRequest(BaseModel):
+    """Тело ``POST /api/tournaments``: участники (≥2) и формат (один/два круга)."""
+
+    models: list[str]
+    double: bool = False
+
+
 def build_api_router(
-    *, get_catalog: CatalogGetter, get_manager: ManagerGetter
+    *,
+    get_catalog: CatalogGetter,
+    get_manager: ManagerGetter,
+    get_tournament_manager: TournamentManagerGetter,
 ) -> APIRouter:
-    """Собрать роутер ``/api`` поверх каталога моделей и планировщика партий."""
+    """Собрать роутер ``/api`` поверх каталога, планировщика партий и турниров."""
     router = APIRouter(prefix="/api", tags=["api"])
 
     @router.get("/models")
@@ -119,6 +132,94 @@ def build_api_router(
             headers={"Content-Disposition": f'attachment; filename="{filename}.pgn"'},
         )
 
+    # --- турниры --------------------------------------------------------------
+
+    @router.post("/tournaments", status_code=status.HTTP_201_CREATED)
+    def api_start_tournament(
+        request: Request, payload: StartTournamentRequest
+    ) -> dict[str, str]:
+        """Запустить round-robin турнир в фоне и вернуть его ``id``.
+
+        Требуется ≥2 различных модели (дубли схлопываются, порядок сохраняется);
+        каждая резолвится через каталог — fail-fast по отсутствию ключа. Ошибки
+        валидации отдаются как 400 с текстом для формы.
+        """
+        catalog = get_catalog(request.app)
+        model_ids = list(dict.fromkeys(payload.models))  # дедуп, порядок сохранён
+        if len(model_ids) < 2:
+            raise HTTPException(
+                status_code=400, detail="Выберите минимум две модели."
+            )
+        participants: list[PlayerInfo] = []
+        try:
+            for model_id in model_ids:
+                catalog.resolve(model_id)  # fail-fast: ключ обязателен
+                model = catalog.get(model_id)
+                participants.append(
+                    PlayerInfo(
+                        model_id=model.id,
+                        provider=model.provider,
+                        display_name=model.display_name,
+                    )
+                )
+        except ConfigError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        session = get_tournament_manager(request.app).start(
+            participants, double=payload.double
+        )
+        return {"id": session.id}
+
+    @router.get("/tournaments")
+    def api_tournaments(request: Request) -> list[dict[str, Any]]:
+        """Список турниров (память + диск) с прогрессом ``played/total``."""
+        manager = get_tournament_manager(request.app)
+        return [_tournament_info(info) for info in manager.list_tournaments()]
+
+    @router.get("/tournaments/{tournament_id}")
+    def api_tournament(request: Request, tournament_id: str) -> dict[str, Any]:
+        """Турнир целиком: участники, статус, прогресс, таблица и расписание.
+
+        Для идущего турнира таблица частичная (по сыгранным партиям) — фронт
+        обновляет страницу по таймеру, пока ``live``.
+        """
+        manager = get_tournament_manager(request.app)
+        record = manager.load_record(tournament_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="турнир не найден")
+        session = manager.get(tournament_id)
+        live = session is not None and not session.done
+        standings = manager.load_standings(tournament_id)
+        names = {p.model_id: p.display_name for p in record.participants}
+        schedule = [
+            {
+                "round": game.round_number,
+                "white": game.white,
+                "black": game.black,
+                "white_name": names.get(game.white, game.white),
+                "black_name": names.get(game.black, game.black),
+                "result": game.result,
+                "game_id": game.game_id,
+            }
+            for game in record.games
+        ]
+        return {
+            "id": tournament_id,
+            "live": live,
+            "status": session.status if session is not None else STATUS_FINISHED,
+            "error": session.error if session is not None else None,
+            "double": record.double,
+            "created_at": record.created_at.isoformat(),
+            "participants": [p.model_dump(mode="json") for p in record.participants],
+            "played": sum(1 for game in record.games if game.result is not None),
+            "total": len(record.games),
+            "standings": (
+                standings.model_dump(mode="json")
+                if standings is not None
+                else {"models": [], "total_games": 0}
+            ),
+            "schedule": schedule,
+        }
+
     return router
 
 
@@ -130,6 +231,20 @@ def _game_info(info: GameInfo) -> dict[str, Any]:
         "black": info.black,
         "status": info.status,
         "result": info.result,
+        "live": info.live,
+        "created_at": info.created_at.isoformat(),
+    }
+
+
+def _tournament_info(info: TournamentInfo) -> dict[str, Any]:
+    """``TournamentInfo`` → JSON-карточка турнира для списка."""
+    return {
+        "id": info.id,
+        "participants": list(info.participants),
+        "double": info.double,
+        "status": info.status,
+        "played": info.played,
+        "total": info.total,
         "live": info.live,
         "created_at": info.created_at.isoformat(),
     }

@@ -128,7 +128,7 @@ deep-link URL. Аккаунты, i18n RU/EN, пауза партии, режим
 SPA с реальной сборкой (Vite + React), раздаётся FastAPI под тем же токен-гейтом.
 
 - [x] `feat(web): JSON API for models and games` — роутер `/api` (`web/api.py`, фабрика `build_api_router` без цикла импортов): `GET /api/models` (каталог + `has_key`), `POST /api/games` → `{id}` (fail-fast 400 вместо перерисовки формы), `GET /api/games` (карточки), `GET /api/games/{id}` (`{live,status,error,record}` — гидратация после перезагрузки), `GET /api/games/{id}/pgn` (файл на скачивание).
-- [ ] `feat(web): JSON API for tournaments` — `POST /api/tournaments` → `{id}`, `GET /api/tournaments` (карточки), `GET /api/tournaments/{id}` (участники, статус, прогресс, standings, расписание).
+- [x] `feat(web): JSON API for tournaments` — `POST /api/tournaments` → `{id}`, `GET /api/tournaments` (карточки), `GET /api/tournaments/{id}` (участники, статус, прогресс, standings, расписание).
 - [ ] `chore(frontend): vite + react scaffold` — каталог `frontend/` (Vite, React, JSX как в дизайне), сборка в `dist/`, vitest для чистых хелперов.
 - [ ] `feat(frontend): design system and app shell` — CSS-токены и темы из дизайна, Header/Footer, URL-роутер (deep links), api-клиент.
 - [ ] `feat(frontend): home and archive screens` — на живых данных `/api/games`.

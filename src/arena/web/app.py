@@ -89,7 +89,11 @@ def create_app(
     # JSON-API для SPA-фронтенда (см. web/api.py и docs/FRONTEND.md §7). Акцессоры
     # передаём функциями — роутер не знает про этот модуль, цикла импортов нет.
     app.include_router(
-        build_api_router(get_catalog=_get_catalog, get_manager=_get_manager)
+        build_api_router(
+            get_catalog=_get_catalog,
+            get_manager=_get_manager,
+            get_tournament_manager=_get_tournament_manager,
+        )
     )
 
     @app.middleware("http")
