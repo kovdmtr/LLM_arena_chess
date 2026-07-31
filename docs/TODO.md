@@ -118,3 +118,24 @@
 
 ## Бэклог (после Phase 8)
 - [x] CLI-обёртка прогона партии/турнира (`python -m arena.cli …`) — команды `models`/`play`/`tournament`, переиспользуют `GameRunner`/`TournamentRunner`/`storage`; UTF-8 вывод на Windows.
+
+## Редизайн фронтенда: новый дизайн + SPA
+Новый дизайн (`docs/design/`, `docs/DESIGN_BRIEF.md`) подключается к существующему
+бэкенду. Объём этого захода — **паритет функций** (см. `docs/FRONTEND.md` §6):
+главная, новая партия, live, отчёт, архив, турниры + светлая/тёмная тема и
+deep-link URL. Аккаунты, i18n RU/EN, пауза партии, режимы think/flash и Elo из
+брифа — **вне этого захода** (нужна новая инфраструктура). Подача фронта —
+SPA с реальной сборкой (Vite + React), раздаётся FastAPI под тем же токен-гейтом.
+
+- [x] `feat(web): JSON API for models and games` — роутер `/api` (`web/api.py`, фабрика `build_api_router` без цикла импортов): `GET /api/models` (каталог + `has_key`), `POST /api/games` → `{id}` (fail-fast 400 вместо перерисовки формы), `GET /api/games` (карточки), `GET /api/games/{id}` (`{live,status,error,record}` — гидратация после перезагрузки), `GET /api/games/{id}/pgn` (файл на скачивание).
+- [ ] `feat(web): JSON API for tournaments` — `POST /api/tournaments` → `{id}`, `GET /api/tournaments` (карточки), `GET /api/tournaments/{id}` (участники, статус, прогресс, standings, расписание).
+- [ ] `chore(frontend): vite + react scaffold` — каталог `frontend/` (Vite, React, JSX как в дизайне), сборка в `dist/`, vitest для чистых хелперов.
+- [ ] `feat(frontend): design system and app shell` — CSS-токены и темы из дизайна, Header/Footer, URL-роутер (deep links), api-клиент.
+- [ ] `feat(frontend): home and archive screens` — на живых данных `/api/games`.
+- [ ] `feat(frontend): new game screen` — каталог из `/api/models`, старт через `POST /api/games`.
+- [ ] `feat(frontend): live game screen` — WS-протокол (§3 FRONTEND.md), доска из FEN, ходы парами, мысли модели.
+- [ ] `feat(frontend): game report screen` — плеер из `GameRecord` (оценки, классы, план, точность), «Скачать PGN».
+- [ ] `feat(frontend): tournaments screens` — создание, список, детали (таблица + расписание, живой прогресс).
+- [ ] `feat(web): serve SPA with history fallback` — раздача сборки из FastAPI (fallback на index.html, токен-гейт), self-contained отчёт как файл на скачивание; удаление SSR-шаблонов и их тестов.
+- [ ] `chore(deploy): multi-stage docker build with frontend` — node-стадия сборки фронта, копия `dist` в питон-образ; обновить `deploy/DEPLOY.md`.
+- [ ] `docs: update FRONTEND.md for SPA architecture` — новая карта фронта, контракт `/api/*`, как запускать dev-сервер.

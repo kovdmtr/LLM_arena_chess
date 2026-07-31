@@ -28,6 +28,7 @@ from arena.models import PlayerInfo
 from arena.obs import register_secrets
 from arena.providers import ProviderError
 from arena.report import render_report_html
+from arena.web.api import build_api_router
 from arena.web.games import STATUS_FINISHED, GameManager
 from arena.web.live import stream_session
 from arena.web.tournaments import TournamentManager
@@ -84,6 +85,12 @@ def create_app(
     app.state.templates = templates
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+    # JSON-API для SPA-фронтенда (см. web/api.py и docs/FRONTEND.md §7). Акцессоры
+    # передаём функциями — роутер не знает про этот модуль, цикла импортов нет.
+    app.include_router(
+        build_api_router(get_catalog=_get_catalog, get_manager=_get_manager)
+    )
 
     @app.middleware("http")
     async def _access_gate(request: Request, call_next):
