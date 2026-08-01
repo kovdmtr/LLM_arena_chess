@@ -236,7 +236,7 @@ button { font-family: inherit; }
 
 /* model chip / cards */
 .mchip { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
-.mchip .av { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: #fff; font-family: var(--mono); font-weight: 600; font-size: 12px; flex: none; text-transform: uppercase; }
+.av { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: #fff; font-family: var(--mono); font-weight: 600; font-size: 12px; flex: none; text-transform: uppercase; }
 
 .field { display: flex; flex-direction: column; gap: 8px; }
 .field > label { font-weight: 700; font-size: 13.5px; color: var(--ink-2); }

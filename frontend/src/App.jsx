@@ -10,14 +10,16 @@ import Footer from './components/Footer.jsx'
 import Header from './components/Header.jsx'
 import { useRoute } from './lib/navigation.js'
 import { applyTheme, nextTheme, storeTheme } from './lib/theme.js'
+import Archive from './screens/Archive.jsx'
+import Home from './screens/Home.jsx'
 import Placeholder from './screens/Placeholder.jsx'
 
 function Screen({ route }) {
   switch (route.name) {
     case 'home':
-      return <Placeholder title="Арена" note="Главная приедет следующей задачей плана." />
+      return <Home />
     case 'archive':
-      return <Placeholder title="Все партии" note="Архив партий приедет следующей задачей плана." />
+      return <Archive />
     case 'new-game':
       return <Placeholder title="Новая партия" note="Выбор моделей и старт партии — следующая задача." />
     case 'game':
