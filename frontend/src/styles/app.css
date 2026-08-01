@@ -210,16 +210,20 @@ button { font-family: inherit; }
 .sq { position: relative; display: grid; place-items: center; }
 .sq.light { background: var(--board-light); }
 .sq.dark { background: var(--board-dark); }
-.sq .pc {
-  user-select: none; pointer-events: none; line-height: 1;
-  font-size: clamp(18px, 6.4cqw, 46px);
+/* Слой фигур поверх клеток: подсветка хода красит поле, а не фигуру. */
+.board-pieces { position: absolute; inset: 0; pointer-events: none; }
+.board-pieces .pc {
+  position: absolute; top: 0; left: 0; width: 12.5%; height: 12.5%;
+  display: grid; place-items: center;
+  /* Скольжение с клетки на клетку — как на chess.com при скорости по умолчанию. */
+  transition: transform .2s cubic-bezier(.4, 0, .2, 1);
   filter: drop-shadow(0 1.5px 1px rgba(43,33,24,.30));
 }
-/* Глифы фигур: заливка — цветом текста, контур — обводкой, чтобы белая фигура
-   читалась на светлой клетке, а чёрная — на тёмной (в обеих темах). */
-.sq .pc-w { color: #fbf7ef; -webkit-text-stroke: 1.1px #3a2a19; }
-.sq .pc-b { color: #241c16; -webkit-text-stroke: 1.1px #0d0a07; }
-.board { container-type: inline-size; }
+.board-pieces .pc svg { width: 88%; height: 88%; display: block; }
+@media (prefers-reduced-motion: reduce) {
+  .board-pieces .pc { transition: none; }
+}
+/* Подсветка последнего хода живёт на слое клеток — фигура над ней и не красится. */
 .sq.hl::after { content: ''; position: absolute; inset: 0; background: rgba(21,128,61,.34); mix-blend-mode: multiply; }
 .sq .coord { position: absolute; font-family: var(--mono); font-size: 9px; font-weight: 600; opacity: .55; }
 .sq .coord.file { right: 3px; bottom: 1px; }

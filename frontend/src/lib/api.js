@@ -104,6 +104,7 @@ export function postJson(path, payload) {
 
 export const api = {
   models: () => getJson('/api/models'),
+  pieces: () => getJson('/api/pieces'),
   games: () => getJson('/api/games'),
   game: (id) => getJson(`/api/games/${encodeURIComponent(id)}`),
   // language — язык интерфейса: на нём модели пишут рассуждения и план

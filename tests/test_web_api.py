@@ -336,3 +336,15 @@ def test_report_of_unknown_game_is_404(tmp_path):
 
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "error.gameNotFound"
+
+
+def test_pieces_endpoint_serves_full_set(tmp_path):
+    """Доска на клиенте рисуется теми же фигурами, что и скачиваемый отчёт."""
+    client = _client(tmp_path)
+
+    payload = client.get("/api/pieces").json()
+
+    assert sorted(payload) == sorted("PNBRQKpnbrqk")
+    assert all(svg.lstrip().startswith("<svg") for svg in payload.values())
+    # белая и чёрная фигуры различаются — иначе доска была бы одноцветной
+    assert payload["P"] != payload["p"]

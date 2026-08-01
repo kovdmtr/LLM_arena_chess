@@ -1,53 +1,84 @@
-/* Доска: рисуется из FEN на клиенте (см. lib/fen.js).
+/* Доска: клетки из FEN + слой фигур поверх них.
  *
- * Фигуры — юникодные глифы, а не картинки: они наследуют цвет и тень от темы,
- * не требуют ассетов и одинаково работают в live и в отчёте. Заливка задаётся
- * цветом текста, контур — обводкой (CSS), поэтому белые видны на светлой клетке.
+ * Два слоя вместо «фигура внутри клетки» дают сразу две вещи:
+ *   — подсветка последнего хода красит только поле, фигура остаётся чистой;
+ *   — фигура — отдельный элемент со стабильным id (см. lib/pieceTracking.js),
+ *     поэтому смена позиции анимируется CSS-переходом, а не скачком.
+ *
+ * Сами фигуры — SVG с бэкенда (`GET /api/pieces`, python-chess): тот же
+ * комплект, что в скачиваемом отчёте. Пока комплект не приехал, доска рисуется
+ * без фигур — клетки и подсветка уже на месте.
  */
-import { movePair, parseFen, squareOf } from '../lib/fen.js'
+import { useRef } from 'react'
 
-const GLYPHS = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' }
+import { movePair, squareName } from '../lib/fen.js'
+import { occupiedSquares, squareOffset, trackPieces } from '../lib/pieceTracking.js'
+import { usePieces } from '../lib/usePieces.js'
+
+const SYMBOLS = {
+  w: { k: 'K', q: 'Q', r: 'R', b: 'B', n: 'N', p: 'P' },
+  b: { k: 'k', q: 'q', r: 'r', b: 'b', n: 'n', p: 'p' },
+}
 
 export default function Board({ fen, lastMove, flip = false, coords = true }) {
-  const { board } = parseFen(fen)
+  const pieces = usePieces()
+  const tracker = useRef({ fen: null, ids: {}, next: 1 })
+
+  const squares = occupiedSquares(fen)
+  const previous = tracker.current
+  if (previous.fen !== fen) {
+    const mint = () => {
+      previous.next += 1
+      return previous.next
+    }
+    const { ids } = trackPieces(previous.ids, previous.fen, fen, lastMove, mint)
+    tracker.current = { fen, ids, next: previous.next }
+  }
+  const ids = tracker.current.ids
+
   const move = movePair(lastMove)
-  const highlighted = [move && move.from, move && move.to]
-    .filter(Boolean)
-    .map(squareOf)
-    .filter(Boolean)
+  const highlighted = [move && move.from, move && move.to].filter(Boolean)
 
   const ranks = flip ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0]
   const files = flip ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7]
-  const isHighlighted = (rank, file) =>
-    highlighted.some((square) => square.rank === rank && square.file === file)
 
   return (
     <div className="board">
       <div className="board-grid">
         {ranks.map((rank) =>
           files.map((file) => {
-            const piece = board[rank][file]
+            const name = squareName(rank, file)
             const dark = (rank + file) % 2 === 0
             return (
               <div
-                key={`${rank}-${file}`}
-                className={
-                  'sq ' + (dark ? 'dark' : 'light') + (isHighlighted(rank, file) ? ' hl' : '')
-                }
+                key={name}
+                className={'sq ' + (dark ? 'dark' : 'light') + (highlighted.includes(name) ? ' hl' : '')}
               >
                 {coords && file === files[0] && <span className="coord rank">{rank + 1}</span>}
                 {coords && rank === ranks[7] && (
                   <span className="coord file">{String.fromCharCode(97 + file)}</span>
                 )}
-                {piece && (
-                  <span className={'pc pc-' + piece.color} aria-hidden="true">
-                    {GLYPHS[piece.type]}
-                  </span>
-                )}
               </div>
             )
           }),
         )}
+      </div>
+
+      <div className="board-pieces">
+        {Object.entries(squares).map(([square, piece]) => {
+          const offset = squareOffset(square, flip)
+          const symbol = SYMBOLS[piece.color][piece.type]
+          const svg = pieces && pieces[symbol]
+          if (!offset || !svg) return null
+          return (
+            <div
+              key={ids[square]}
+              className="pc"
+              style={{ transform: `translate(${offset.x}%, ${offset.y}%)` }}
+              dangerouslySetInnerHTML={{ __html: svg }}
+            />
+          )
+        })}
       </div>
     </div>
   )

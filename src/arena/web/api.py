@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import Any, Callable
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
@@ -23,6 +24,7 @@ from arena.core import build_pgn
 from arena.models import PlayerInfo
 from arena.prompts import SUPPORTED_LANGUAGES
 from arena.report import render_report_html
+from arena.report.animation import piece_svgs
 from arena.providers import ProviderError
 from arena.web.games import STATUS_FINISHED, GameInfo, GameManager
 from arena.web.tournaments import TournamentInfo, TournamentManager
@@ -49,6 +51,12 @@ class StartTournamentRequest(BaseModel):
     models: list[str]
     double: bool = False
     language: str | None = None
+
+
+@lru_cache(maxsize=1)
+def _piece_svgs() -> dict[str, str]:
+    """Комплект SVG фигур (12 штук) — считается один раз на процесс."""
+    return piece_svgs()
 
 
 def api_error(
@@ -127,6 +135,16 @@ def build_api_router(
             }
             for model in catalog.models
         ]
+
+    @router.get("/pieces")
+    def api_pieces() -> dict[str, str]:
+        """SVG фигур по FEN-символам (``"P"``/``"n"`` …) для доски на клиенте.
+
+        Тот же комплект, что в самодостаточном отчёте (python-chess), — доска на
+        сайте и в скачанном файле выглядит одинаково. Набор неизменен, поэтому
+        считается один раз и кэшируется.
+        """
+        return _piece_svgs()
 
     @router.post("/games", status_code=status.HTTP_201_CREATED)
     def api_start_game(request: Request, payload: StartGameRequest) -> dict[str, str]:
