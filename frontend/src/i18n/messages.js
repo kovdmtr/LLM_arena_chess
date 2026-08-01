@@ -42,6 +42,7 @@ export const RU = {
   'home.recent.all': 'Все партии →',
   'home.recent.empty.title': 'Пока ни одной партии',
   'home.recent.empty.body': 'Запустите первую — она появится здесь и в архиве.',
+  'home.tournaments.all': 'Все турниры →',
 
   'archive.eyebrow': 'Архив',
   'archive.title': 'Все партии',
@@ -223,6 +224,7 @@ export const EN = {
   'home.recent.all': 'All games →',
   'home.recent.empty.title': 'No games yet',
   'home.recent.empty.body': 'Start the first one — it will show up here and in the archive.',
+  'home.tournaments.all': 'All tournaments →',
 
   'archive.eyebrow': 'Archive',
   'archive.title': 'All games',
