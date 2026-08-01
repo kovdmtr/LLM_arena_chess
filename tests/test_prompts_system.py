@@ -138,3 +138,36 @@ def test_strategy_prompt_has_no_unfilled_placeholders():
     prompt = build_system_prompt(include_strategy=True)
     for placeholder in ("{strategy_section}", "{strategy_keys}", "{example}"):
         assert placeholder not in prompt
+
+
+# --- язык текстовых полей (i18n: интерфейс одноязычный) ---
+
+
+def test_language_clause_absent_by_default():
+    """Без запроса языка промпт прежний — старое поведение не меняется."""
+    prompt = build_system_prompt()
+    assert "Language:" not in prompt
+    assert "{language_section}" not in prompt
+
+
+def test_language_clause_names_requested_language():
+    for code, name in (("ru", "Russian"), ("en", "English")):
+        prompt = build_system_prompt(response_language=code)
+        assert "Language:" in prompt
+        assert name in prompt
+        # ход остаётся в нотации — язык на него не влияет
+        assert "language-independent" in prompt
+
+
+def test_language_clause_covers_strategy_field_only_when_enabled():
+    with_plan = build_system_prompt(response_language="ru", include_strategy=True)
+    without_plan = build_system_prompt(response_language="ru", include_strategy=False)
+    assert '"reasoning" and "strategy"' in with_plan
+    assert '"reasoning" and "strategy"' not in without_plan
+    assert '("reasoning")' in without_plan
+
+
+def test_language_code_is_case_insensitive_and_unknown_is_ignored():
+    assert "Russian" in build_system_prompt(response_language="RU")
+    for code in ("de", "", "  ", None):
+        assert "Language:" not in build_system_prompt(response_language=code)

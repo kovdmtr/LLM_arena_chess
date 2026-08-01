@@ -47,6 +47,11 @@ _SYSTEM_PROMPT = (
     "the sentence."
 )
 
+# Комментарий попадает в отчёт рядом с рассуждениями модели, поэтому пишется на
+# языке партии (``PlayerSettings.response_language``). Имена языков — как в
+# ``prompts.system``; незнакомый код языка ничего не добавляет к промпту.
+_LANGUAGE_NAMES = {"ru": "Russian", "en": "English"}
+
 
 class Commenter(Protocol):
     """Минимальный контракт комментатора — совпадает с ``LLMProvider.complete``."""
@@ -124,6 +129,7 @@ def build_commentary_prompt(
     В ``user`` уходит номер хода, сторона, SAN, класс (``moment.classification``),
     оценка позиции (POV белых, из ``engine_eval_cp``), FEN до хода, опц. лучший ход
     движка и рассуждение самой модели. Никаких секретов — только данные позиции.
+    Язык комментария берётся из настроек партии (``response_language``).
     """
     move_no = (move.ply + 1) // 2
     lines = [
@@ -158,6 +164,12 @@ def build_commentary_prompt(
         lines.append("If relevant, note whether the move followed or changed that plan.")
 
     lines.append("Explain in one sentence why this move is notable.")
+
+    # Язык комментария — язык партии: он ляжет в отчёт рядом с рассуждениями,
+    # а интерфейс одноязычный. Не задан/незнаком — просьбы о языке нет.
+    language = _LANGUAGE_NAMES.get((game.settings.response_language or "").lower())
+    if language:
+        lines.append(f"Write the sentence in {language}.")
 
     return [
         MessageRecord(role="system", content=_SYSTEM_PROMPT),

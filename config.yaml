@@ -11,6 +11,8 @@ arena:
   strategy:
     enabled: true                # фича «стратегия»: модель ведёт приватный rolling-план
                                  # (strategy/plan_status), план прошлого хода возвращается ей же
+  response_language: null        # язык полей reasoning/strategy: "ru" | "en" | null (не навязывать);
+                                 # веб подставляет сюда язык интерфейса при старте партии
 
 engine:
   enabled: true

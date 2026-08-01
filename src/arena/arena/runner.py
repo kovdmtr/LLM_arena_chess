@@ -177,6 +177,7 @@ class GameRunner:
             illegal_move_retries=game.settings.illegal_move_retries,
             include_legal_moves=game.settings.include_legal_moves,
             include_strategy=game.settings.strategy_enabled,
+            response_language=game.settings.response_language,
         )
 
     @property

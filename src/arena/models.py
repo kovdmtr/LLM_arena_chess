@@ -144,12 +144,16 @@ class PlayerSettings(BaseModel):
     ``strategy_enabled`` (фича «стратегия») включает rolling-план: модель пишет
     ``strategy``/``plan_status``, а план её прошлого хода ре-инъектируется ей же.
     По умолчанию включено.
+    ``response_language`` (``"ru"``/``"en"``) — язык, на котором модель пишет
+    ``reasoning``/``strategy``: интерфейс одноязычный, и тексты в логе и отчёте
+    должны быть на том же языке. ``None`` — язык не навязываем (прежнее поведение).
     """
 
     illegal_move_retries: int = 3
     hints_per_player: int = 3
     include_legal_moves: bool = False
     strategy_enabled: bool = True
+    response_language: str | None = None
 
 
 class PlayerAnalysis(BaseModel):

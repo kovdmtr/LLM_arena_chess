@@ -196,6 +196,26 @@ def test_strategy_section_in_system_prompt_by_default():
     assert '"plan_status"' in system.content
 
 
+def test_response_language_reaches_system_prompt():
+    """Язык интерфейса доезжает до промпта: модель пишет рассуждения на нём."""
+    runner, players, _ = _runner(
+        FOOLS_MATE_WHITE,
+        FOOLS_MATE_BLACK,
+        settings=PlayerSettings(response_language="en"),
+    )
+    runner.play()
+    system, _ = players["white"].seen[0]
+    assert "Language:" in system.content
+    assert "English" in system.content
+
+
+def test_no_language_section_when_language_not_set():
+    runner, players, _ = _runner(FOOLS_MATE_WHITE, FOOLS_MATE_BLACK)
+    runner.play()
+    system, _ = players["white"].seen[0]
+    assert "Language:" not in system.content
+
+
 def test_strategy_section_absent_when_disabled():
     runner, players, _ = _runner(
         FOOLS_MATE_WHITE,

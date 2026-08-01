@@ -251,3 +251,14 @@ def test_by_env_name_unknown_returns_none(monkeypatch):
         monkeypatch.delenv(var, raising=False)
     settings = Settings.load(config_path=DEFAULT_CONFIG_PATH, env_file=None)
     assert settings.secrets.by_env_name("NOT_A_REAL_KEY") is None
+
+
+def test_response_language_defaults_to_none_and_reaches_player_settings(tmp_path):
+    """Язык ответов моделей: по умолчанию не навязываем, из конфига доезжает в партию."""
+    from arena.config.settings import ArenaConfig
+
+    assert ArenaConfig().response_language is None
+    assert ArenaConfig().to_player_settings().response_language is None
+
+    config = ArenaConfig(response_language="en")
+    assert config.to_player_settings().response_language == "en"

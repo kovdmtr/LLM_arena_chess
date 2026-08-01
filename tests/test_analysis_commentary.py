@@ -294,3 +294,27 @@ def test_previous_plan_is_side_specific():
     user = build_commentary_prompt(game, game.moves[2], moment)[1].content
     assert "white-current" in user
     assert "BLACK-PLAN" not in user
+
+
+# --- язык комментария (i18n: комментарий ложится в отчёт рядом с рассуждениями) ---
+
+
+def test_commentary_prompt_asks_for_game_language():
+    game = _game_with_moments([(3, "blunder")])
+    game.settings.response_language = "ru"
+    move = game.moves[2]
+    moment = game.analysis.key_moments[0]
+
+    prompt = build_commentary_prompt(game, move, moment)
+
+    assert "Write the sentence in Russian." in prompt[1].content
+
+
+def test_commentary_prompt_without_language_is_unchanged():
+    game = _game_with_moments([(3, "blunder")])
+    move = game.moves[2]
+    moment = game.analysis.key_moments[0]
+
+    prompt = build_commentary_prompt(game, move, moment)
+
+    assert "Write the sentence in" not in prompt[1].content

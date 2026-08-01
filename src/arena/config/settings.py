@@ -40,6 +40,9 @@ class ArenaConfig(BaseModel):
     auto_claim_draws: bool = True
     include_legal_moves: bool = False  # класть ли список легальных ходов в промпт (D-021)
     strategy: StrategyConfig = Field(default_factory=StrategyConfig)
+    # Язык полей `reasoning`/`strategy`: "ru"/"en" (None — не навязывать).
+    # Веб передаёт сюда язык интерфейса при старте партии.
+    response_language: str | None = None
 
     def to_player_settings(self) -> "PlayerSettings":  # noqa: F821 — строковая аннотация
         """Спроецировать конфиг арены в ``PlayerSettings`` (срез, хранимый в партии).
@@ -57,6 +60,7 @@ class ArenaConfig(BaseModel):
             hints_per_player=self.hints_per_player,
             include_legal_moves=self.include_legal_moves,
             strategy_enabled=self.strategy.enabled,
+            response_language=self.response_language,
         )
 
 

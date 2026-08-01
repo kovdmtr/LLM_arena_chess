@@ -59,6 +59,29 @@ turns and not shown to the opponent.
   - "plan_status": string — one of "start", "continue", "adapt", "abandon": how this \
 plan relates to your previous one (use "start" on your first move)."""
 
+# Язык текстовых полей ответа. Интерфейс одноязычный (RU **или** EN), поэтому
+# рассуждения и план просим на том же языке — иначе в отчёте окажется смесь.
+# Ход остаётся в шахматной нотации: она от языка не зависит.
+_LANGUAGE_NAMES = {"ru": "Russian", "en": "English"}
+
+_LANGUAGE_CLAUSE = """
+
+Language:
+- Write the text fields ("reasoning"{strategy_field}) in {language}. Keep the move \
+itself in standard chess notation — notation is language-independent."""
+
+
+def _language_section(code: str | None, *, include_strategy: bool) -> str:
+    """Пункт промпта о языке текстовых полей; пусто, если язык не задан/незнаком."""
+    language = _LANGUAGE_NAMES.get((code or "").lower())
+    if not language:
+        return ""
+    return _LANGUAGE_CLAUSE.format(
+        language=language,
+        strategy_field=' and "strategy"' if include_strategy else "",
+    )
+
+
 # Пример ответа: базовый (4 ключа) и с полями стратегии (6 ключей).
 _EXAMPLE_BASE = (
     '{"reasoning": "Develop the knight and fight for the center.", '
@@ -96,7 +119,7 @@ context on your next turn. Once your hints are used up, requesting more has no e
 
 Resigning:
 - Set "resign" to true only to voluntarily concede the game. Use it sparingly, in a \
-clearly lost position.{strategy_section}
+clearly lost position.{strategy_section}{language_section}
 
 Response format (strict):
 - Reply with EXACTLY ONE JSON object and nothing else — no markdown fences, no prose \
@@ -118,6 +141,7 @@ def build_system_prompt(
     illegal_move_retries: int = 3,
     include_legal_moves: bool = True,
     include_strategy: bool = False,
+    response_language: str | None = None,
 ) -> str:
     """Собрать текст системного промпта под лимиты партии.
 
@@ -128,13 +152,16 @@ def build_system_prompt(
     — требует, чтобы модель сама подобрала легальный ход (проверка после ответа).
     ``include_strategy`` (фича «стратегия») добавляет описание полей ``strategy``/
     ``plan_status`` и контракт непрерывности; при ``False`` (по умолчанию) промпт
-    идентичен прежнему. Возвращает готовый текст без завершающего перевода строки.
+    идентичен прежнему. ``response_language`` (``"ru"``/``"en"``) добавляет пункт о
+    языке текстовых полей — язык интерфейса; ``None``/незнакомый код ничего не
+    добавляет. Возвращает готовый текст без завершающего перевода строки.
     """
     variant = _LEGAL_MOVES_ON if include_legal_moves else _LEGAL_MOVES_OFF
     return _TEMPLATE.format(
         hints=hints_per_player,
         retries=illegal_move_retries,
         strategy_section=_STRATEGY_SECTION if include_strategy else "",
+        language_section=_language_section(response_language, include_strategy=include_strategy),
         strategy_keys=_STRATEGY_KEYS_TEXT if include_strategy else "",
         example=_EXAMPLE_STRATEGY if include_strategy else _EXAMPLE_BASE,
         **variant,
@@ -147,6 +174,7 @@ def system_message(
     illegal_move_retries: int = 3,
     include_legal_moves: bool = True,
     include_strategy: bool = False,
+    response_language: str | None = None,
 ) -> MessageRecord:
     """Обёртка ``build_system_prompt`` в ``MessageRecord`` с ролью ``system``.
 
@@ -157,5 +185,6 @@ def system_message(
         illegal_move_retries=illegal_move_retries,
         include_legal_moves=include_legal_moves,
         include_strategy=include_strategy,
+        response_language=response_language,
     )
     return MessageRecord(role="system", content=content)
