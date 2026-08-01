@@ -137,7 +137,7 @@ SPA с реальной сборкой (Vite + React), раздаётся FastAP
 - [x] `feat(arena): model response language` — язык ответов модели (`reasoning`/`strategy`, комментарий ключевых моментов) следует выбору интерфейса: `response_language` в `PlayerSettings`/`config.yaml` → пункт системного промпта; по умолчанию поведение прежнее.
 - [x] `feat(web): pass ui language when starting game/tournament` — `language` в `POST /api/games`/`/api/tournaments` → `PlayerSettings.response_language`; фронт шлёт текущий язык интерфейса.
 - [x] `feat(web): error codes in api responses` — `/api/*` отдаёт `detail = {code, params, message}` вместо русской фразы; фронт переводит код на язык интерфейса, `message` — техническая подробность на случай незнакомого кода. Закрывает последний источник смешения языков в EN-режиме.
-- [ ] `feat(frontend): live game screen` — WS-протокол (§3 FRONTEND.md), доска из FEN, ходы парами, мысли модели.
+- [x] `feat(frontend): live game screen` — WS-протокол (§3 FRONTEND.md) свёрнут чистым редьюсером `lib/live.js`; доска рисуется клиентом из FEN (`lib/fen.js` + `Board`, юникодные глифы — тема и палитра дизайна, серверный `svg` из кадра не используем), ходы парами (`MoveList`), мысли модели по последнему ходу, подсказки/нелегальные попытки/финал; экран `/games/{id}` разветвляется live ↔ разбор, как SSR-роут.
 - [ ] `feat(frontend): game report screen` — плеер из `GameRecord` (оценки, классы, план, точность), «Скачать PGN».
 - [ ] `feat(frontend): tournaments screens` — создание, список, детали (таблица + расписание, живой прогресс).
 - [ ] `feat(web): serve SPA with history fallback` — раздача сборки из FastAPI (fallback на index.html, токен-гейт), self-contained отчёт как файл на скачивание; удаление SSR-шаблонов и их тестов.

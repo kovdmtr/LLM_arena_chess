@@ -12,6 +12,7 @@ import { LangProvider } from './lib/LangContext.jsx'
 import { useRoute } from './lib/navigation.js'
 import { applyTheme, nextTheme, storeTheme } from './lib/theme.js'
 import Archive from './screens/Archive.jsx'
+import Game from './screens/Game.jsx'
 import Home from './screens/Home.jsx'
 import NewGame from './screens/NewGame.jsx'
 import Placeholder from './screens/Placeholder.jsx'
@@ -25,7 +26,7 @@ function Screen({ route }) {
     case 'new-game':
       return <NewGame />
     case 'game':
-      return <Placeholder titleKey="wip.game.title" noteKey="wip.game.note" params={route.params} />
+      return <Game id={route.params.id} />
     case 'tournaments':
       return <Placeholder titleKey="wip.tournaments.title" noteKey="wip.tournaments.note" />
     case 'new-tournament':
