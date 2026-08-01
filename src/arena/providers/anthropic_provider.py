@@ -66,7 +66,7 @@ class AnthropicProvider(LLMProvider):
         ]
 
         kwargs: dict = {
-            "model": self.model.id,
+            "model": self.model.api_model,
             "messages": payload,
             "max_tokens": params.max_tokens,
         }

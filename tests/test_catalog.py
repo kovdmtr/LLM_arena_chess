@@ -155,7 +155,12 @@ def test_from_settings_uses_default_catalog(monkeypatch):
         monkeypatch.delenv(var, raising=False)
     settings = Settings.load(config_path=DEFAULT_CONFIG_PATH, env_file=None)
     catalog = ModelCatalog.from_settings(settings)
-    assert set(catalog.ids()) == {"gpt-4o", "claude-opus-4-8", "gemini-2.5-pro"}
+    ids = catalog.ids()
+    assert len(ids) == len(set(ids))  # дубликатов быть не может
+    assert {"gpt-4o", "claude-opus-4-8", "gemini-2.5-pro"} <= set(ids)
+    # каждая запись ссылается на объявленного провайдера
+    for model_id in ids:
+        assert catalog.api_key_env_for(model_id)
     # Без ключей резолв падает fail-fast.
     with pytest.raises(ConfigError):
         catalog.resolve("gpt-4o")

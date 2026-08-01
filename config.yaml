@@ -42,20 +42,59 @@ providers:                       # имя провайдера = имя реал
   gemini:    { api_key_env: GOOGLE_API_KEY }   # реализация зарегистрирована как 'gemini' (D-018)
 
 models:                          # каталог выбираемых моделей
+  # id — ключ каталога, model — имя в API (нужно, когда одна модель заведена
+  # несколькими записями с разными параметрами: GPT с разной глубиной раздумья).
   - id: gpt-4o
     provider: openai
     display_name: "GPT-4o"
     params: { temperature: 0.2, max_tokens: 1024 }
+
+  # GPT-5.5 в трёх режимах раздумья. Эта серия отвергает temperature (только 1)
+  # и max_tokens (нужен max_completion_tokens) → params.reasoning: true.
+  # Размышления тратят output-токены, поэтому лимит растёт вместе с глубиной.
+  - id: gpt-5.5-instant
+    model: gpt-5.5
+    provider: openai
+    display_name: "GPT-5.5 Instant"
+    params: { temperature: null, max_tokens: 4096, reasoning: true, reasoning_effort: "none" }
+  - id: gpt-5.5-medium
+    model: gpt-5.5
+    provider: openai
+    display_name: "GPT-5.5 Medium"
+    params: { temperature: null, max_tokens: 8192, reasoning: true, reasoning_effort: "medium" }
+  - id: gpt-5.5-high
+    model: gpt-5.5
+    provider: openai
+    display_name: "GPT-5.5 High"
+    params: { temperature: null, max_tokens: 16384, reasoning: true, reasoning_effort: "high" }
+
   - id: claude-opus-4-8
     provider: anthropic
     display_name: "Claude Opus 4.8"
     params: { temperature: null, max_tokens: 1024 }   # эта модель отвергает temperature (400)
+
+  # Gemini: «думающие» модели тратят output-токены на размышления. С малым
+  # лимитом (1024) бюджет съедается мыслями, текст ответа пустой → партия рвётся,
+  # поэтому у всех запас на размышления + ход. Flash дешевле и стабильнее pro.
   - id: gemini-2.5-pro
     provider: gemini
     display_name: "Gemini 2.5 Pro"
-    # 2.5-pro — «думающая» модель: на размышления уходят output-токены. С малым
-    # лимитом (1024) бюджет съедается мыслями и текст ответа пустой → партия рвётся.
-    # Даём запас на размышления + ход. (Дешевле/стабильнее — gemini-2.5-flash.)
+    params: { temperature: 0.2, max_tokens: 8192 }
+  - id: gemini-3.6-flash
+    provider: gemini
+    display_name: "Gemini 3.6 Flash"
+    params: { temperature: 0.2, max_tokens: 8192 }
+  - id: gemini-3.5-flash
+    provider: gemini
+    display_name: "Gemini 3.5 Flash"
+    params: { temperature: 0.2, max_tokens: 8192 }
+  - id: gemini-3-flash-preview
+    provider: gemini
+    display_name: "Gemini 3 Flash"
+    params: { temperature: 0.2, max_tokens: 8192 }
+  - id: gemini-3.5-flash-lite
+    provider: gemini
+    display_name: "Gemini 3.5 Flash Lite"
     params: { temperature: 0.2, max_tokens: 8192 }
 
 output:

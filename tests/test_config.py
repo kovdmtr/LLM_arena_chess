@@ -24,8 +24,35 @@ def test_default_config_yaml_parses():
     assert cfg.arena.strategy.enabled is True  # фича «стратегия» включена в дефолтном конфиге
     assert cfg.engine.path == "tools/bin/stockfish.exe"
     assert cfg.output.games_dir == "games"
-    assert {m.id for m in cfg.models} == {"gpt-4o", "claude-opus-4-8", "gemini-2.5-pro"}
+    ids = [m.id for m in cfg.models]
+    assert len(ids) == len(set(ids))
+    assert {"gpt-4o", "claude-opus-4-8", "gemini-2.5-pro"} <= set(ids)
+    assert {m.provider for m in cfg.models} <= set(cfg.providers)
     assert cfg.providers["openai"].api_key_env == "OPENAI_API_KEY"
+
+
+def test_default_catalog_has_gpt_reasoning_variants():
+    """Один и тот же GPT заведён тремя записями с разной глубиной раздумья."""
+    cfg = AppConfig.from_yaml(DEFAULT_CONFIG_PATH)
+    variants = [m for m in cfg.models if m.id.startswith("gpt-5.5-")]
+
+    assert len(variants) == 3
+    # разные записи каталога — одна модель в API
+    assert {m.api_model for m in variants} == {"gpt-5.5"}
+    assert {m.params.reasoning_effort for m in variants} == {"none", "medium", "high"}
+    for model in variants:
+        # серия отвергает temperature и требует max_completion_tokens
+        assert model.params.reasoning is True
+        assert model.params.temperature is None
+
+
+def test_default_catalog_has_several_gemini_flash_versions():
+    cfg = AppConfig.from_yaml(DEFAULT_CONFIG_PATH)
+    flash = [m for m in cfg.models if m.provider == "gemini" and "flash" in m.id]
+
+    assert len(flash) >= 3
+    # у flash-моделей запас на «думающий» режим — иначе ответ приходит пустым
+    assert all(m.params.max_tokens >= 8192 for m in flash)
 
 
 # --- Фича «стратегия»: конфиг и мост в PlayerSettings ----------------------

@@ -133,19 +133,40 @@ class ModelParams(BaseModel):
     провайдер не передаёт его в API. Это нужно для моделей, у которых параметр
     запрещён/устарел (например, ``claude-opus-4-8`` отвечает 400 на любой
     ``temperature``). По умолчанию остаётся ``0.2``.
+
+    ``reasoning`` помечает «думающую» модель OpenAI (серии GPT-5/o*): у неё лимит
+    ответа передаётся полем ``max_completion_tokens`` (``max_tokens`` отвергается
+    с 400), и доступен ``reasoning_effort`` — глубина размышления
+    (``"none"``/``"low"``/``"medium"``/``"high"``; чем выше, тем дороже и
+    медленнее). Для остальных моделей оба поля не используются.
     """
 
     temperature: float | None = 0.2
     max_tokens: int = 1024
+    reasoning: bool = False
+    reasoning_effort: str | None = None
 
 
 class ModelConfig(BaseModel):
-    """Запись каталога моделей."""
+    """Запись каталога моделей.
+
+    ``id`` — ключ в каталоге и в записях партий; ``model`` — имя модели в API
+    провайдера. Обычно они совпадают, поэтому ``model`` не задают. Разводить их
+    нужно, когда одна и та же модель заведена несколькими записями с разными
+    параметрами (например, GPT с разной глубиной размышления): id у записей
+    разный, имя в API — одно.
+    """
 
     id: str
     provider: str
     display_name: str
+    model: str | None = None
     params: ModelParams = Field(default_factory=ModelParams)
+
+    @property
+    def api_model(self) -> str:
+        """Имя модели для запроса к провайдеру."""
+        return self.model or self.id
 
 
 class OutputConfig(BaseModel):

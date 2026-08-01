@@ -46,11 +46,15 @@ class OpenAIProvider(LLMProvider):
     ) -> str:
         client = self._ensure_client()
         payload = [{"role": m.role, "content": m.content} for m in messages]
-        kwargs: dict = {
-            "model": self.model.id,
-            "messages": payload,
-            "max_tokens": params.max_tokens,
-        }
+        kwargs: dict = {"model": self.model.api_model, "messages": payload}
+        if params.reasoning:
+            # «Думающие» модели (GPT-5/o*) отвергают max_tokens с 400 и просят
+            # max_completion_tokens; глубина размышления — reasoning_effort.
+            kwargs["max_completion_tokens"] = params.max_tokens
+            if params.reasoning_effort:
+                kwargs["reasoning_effort"] = params.reasoning_effort
+        else:
+            kwargs["max_tokens"] = params.max_tokens
         if params.temperature is not None:  # None → не передаём (см. ModelParams)
             kwargs["temperature"] = params.temperature
         try:

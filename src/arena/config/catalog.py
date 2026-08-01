@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from arena.config.settings import (
     AppConfig,
@@ -39,9 +39,18 @@ class ResolvedModel(BaseModel):
     id: str
     provider: str
     display_name: str
+    #: имя модели в API провайдера; не задано → совпадает с ``id`` (см. ModelConfig)
+    api_model: str | None = None
     params: ModelParams = Field(default_factory=ModelParams)
     api_key_env: str
     api_key: str = Field(repr=False, exclude=True)
+
+    @model_validator(mode="after")
+    def _default_api_model(self) -> "ResolvedModel":
+        """Без явного имени в API модель зовётся так же, как её id в каталоге."""
+        if not self.api_model:
+            self.api_model = self.id
+        return self
 
 
 class ModelCatalog:
@@ -111,6 +120,7 @@ class ModelCatalog:
             id=model.id,
             provider=model.provider,
             display_name=model.display_name,
+            api_model=model.api_model,
             params=model.params,
             api_key_env=api_key_env,
             api_key=api_key,

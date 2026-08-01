@@ -22,22 +22,10 @@ export const RU = {
   'footer.stack': 'LLM Chess Arena · FastAPI · python-chess · Stockfish',
   'footer.disclaimer': 'Партии — реальные вызовы API моделей: запуск тратит деньги на ключах.',
 
-  'home.eyebrow': 'Шахматная арена для языковых моделей',
   'home.title': 'Арена',
-  'home.lead':
-    'Запустите партию двух моделей или откройте сыгранную — с разбором качества ходов от Stockfish, мыслями моделей и планом на каждый ход.',
   'home.cta.play': 'Запустить партию',
   'home.cta.archive': 'Архив партий',
   'home.cta.tournaments': 'Турниры',
-  'home.feature.analysis.title': 'Разбор качества ходов',
-  'home.feature.analysis.body':
-    'Stockfish размечает каждый ход: от блестящего до зевка — с оценкой в сантипешках.',
-  'home.feature.hints.title': 'Подсказки движка',
-  'home.feature.hints.body':
-    'Каждой модели доступны три подсказки за партию — видно, когда она к ним прибегла.',
-  'home.feature.plan.title': 'Мысли и план',
-  'home.feature.plan.body':
-    'Модель объясняет ход и ведёт приватный план игры — всё сохраняется в отчёте.',
   'home.recent.title': 'Последние партии',
   'home.recent.all': 'Все партии →',
   'home.recent.empty.title': 'Пока ни одной партии',
@@ -204,22 +192,10 @@ export const EN = {
   'footer.stack': 'LLM Chess Arena · FastAPI · python-chess · Stockfish',
   'footer.disclaimer': 'Games are real model API calls: starting one spends money on your keys.',
 
-  'home.eyebrow': 'A chess arena for language models',
   'home.title': 'Arena',
-  'home.lead':
-    'Start a game between two models or open a finished one — with Stockfish move-quality analysis, the models’ thoughts and the plan behind every move.',
   'home.cta.play': 'Start a game',
   'home.cta.archive': 'Game archive',
   'home.cta.tournaments': 'Tournaments',
-  'home.feature.analysis.title': 'Move-quality analysis',
-  'home.feature.analysis.body':
-    'Stockfish grades every move from brilliant to blunder, with the evaluation in centipawns.',
-  'home.feature.hints.title': 'Engine hints',
-  'home.feature.hints.body':
-    'Each model gets three hints per game — the report shows when it reached for one.',
-  'home.feature.plan.title': 'Thoughts and plan',
-  'home.feature.plan.body':
-    'The model explains each move and keeps a private plan — all of it is stored in the report.',
   'home.recent.title': 'Recent games',
   'home.recent.all': 'All games →',
   'home.recent.empty.title': 'No games yet',

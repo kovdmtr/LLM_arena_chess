@@ -177,3 +177,69 @@ def test_repr_hides_key():
     text = repr(OpenAIProvider(_model()))
     assert API_KEY not in text
     assert "openai" in text and "gpt-4o" in text
+
+
+# --- «думающие» модели (GPT-5/o*): другой набор полей запроса ---------------
+
+
+def test_reasoning_model_uses_max_completion_tokens_and_effort(monkeypatch):
+    """Серия GPT-5 отвергает max_tokens (400) — лимит уходит другим полем."""
+    captured: dict = {}
+    _install_fake(monkeypatch, captured, response=_response("OK"))
+    provider = OpenAIProvider(_model("gpt-5.5-high"))
+
+    provider.complete(
+        _msgs(),
+        ModelParams(temperature=None, max_tokens=8192, reasoning=True, reasoning_effort="high"),
+    )
+
+    kwargs = captured["create_kwargs"]
+    assert kwargs["max_completion_tokens"] == 8192
+    assert "max_tokens" not in kwargs
+    assert kwargs["reasoning_effort"] == "high"
+    assert "temperature" not in kwargs
+
+
+def test_reasoning_model_without_effort_sends_only_limit(monkeypatch):
+    captured: dict = {}
+    _install_fake(monkeypatch, captured, response=_response("OK"))
+    provider = OpenAIProvider(_model("gpt-5.5-instant"))
+
+    provider.complete(_msgs(), ModelParams(temperature=None, max_tokens=4096, reasoning=True))
+
+    kwargs = captured["create_kwargs"]
+    assert kwargs["max_completion_tokens"] == 4096
+    assert "reasoning_effort" not in kwargs
+
+
+def test_plain_model_keeps_max_tokens(monkeypatch):
+    """Обычные модели (gpt-4o) поведение не меняют."""
+    captured: dict = {}
+    _install_fake(monkeypatch, captured, response=_response("OK"))
+    provider = OpenAIProvider(_model("gpt-4o"))
+
+    provider.complete(_msgs(), ModelParams(temperature=0.2, max_tokens=1024))
+
+    kwargs = captured["create_kwargs"]
+    assert kwargs["max_tokens"] == 1024
+    assert "max_completion_tokens" not in kwargs
+    assert "reasoning_effort" not in kwargs
+
+
+def test_request_uses_api_model_name_not_catalog_id(monkeypatch):
+    """Варианты одной модели различаются id каталога, но зовут одно имя в API."""
+    captured: dict = {}
+    _install_fake(monkeypatch, captured, response=_response("OK"))
+    model = ResolvedModel(
+        id="gpt-5.5-medium",
+        provider="openai",
+        display_name="GPT-5.5 Medium",
+        api_model="gpt-5.5",
+        params=ModelParams(),
+        api_key_env="OPENAI_API_KEY",
+        api_key=API_KEY,
+    )
+
+    OpenAIProvider(model).complete(_msgs(), ModelParams())
+
+    assert captured["create_kwargs"]["model"] == "gpt-5.5"

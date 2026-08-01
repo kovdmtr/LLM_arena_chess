@@ -83,7 +83,7 @@ class GeminiProvider(LLMProvider):
         try:
             response = self._call(
                 lambda: client.models.generate_content(
-                    model=self.model.id,
+                    model=self.model.api_model,
                     contents=contents,
                     config=config,
                 )
