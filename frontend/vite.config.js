@@ -5,11 +5,10 @@ import react from '@vitejs/plugin-react'
 // её относительно __file__ и она едет вместе с пакетом (в т.ч. в Docker-образ).
 // Каталог сборки в .gitignore: в репозитории живут исходники, не артефакты.
 //
-// dev-сервер (npm run dev) проксирует данные на локальный uvicorn:
+// dev-сервер (npm run dev) проксирует на локальный uvicorn только данные:
 //   /api/*            — JSON-API
 //   /games/{id}/ws    — WebSocket живой партии (только он, остальные /games/* —
 //                       это маршруты самого SPA и должны отдаваться Vite)
-//   /static/*         — inline-SVG досок и прочая серверная статика
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -19,7 +18,6 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/static': { target: 'http://127.0.0.1:8000', changeOrigin: true },
       '^/games/[^/]+/ws$': { target: 'ws://127.0.0.1:8000', ws: true },
     },
   },

@@ -17,8 +17,8 @@ describe('vite build', () => {
 
 describe('dev-прокси', () => {
   it('отдаёт бэкенду данные, а не маршруты SPA', () => {
+    // на бэкенде остались только /api и WS — серверной вёрстки и статики нет
     expect(Object.keys(config.server.proxy)).toContain('/api')
-    expect(Object.keys(config.server.proxy)).toContain('/static')
   })
 
   it('проксирует только WebSocket партии — страница /games/{id} остаётся за SPA', () => {
