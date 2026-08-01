@@ -13,7 +13,12 @@ COPY frontend/package.json frontend/package-lock.json ./frontend/
 RUN cd frontend && npm ci
 
 COPY frontend ./frontend
-RUN cd frontend && npm run build   # → /build/src/arena/web/spa
+# Сборка + проверка результата: без неё пустая стадия дала бы рабочий образ,
+# который на каждой странице отвечает «Фронтенд не собран» (503). Пусть лучше
+# падает сборка образа — это видно сразу и не трогает работающий контейнер.
+RUN cd frontend && npm run build \
+    && test -f /build/src/arena/web/spa/index.html \
+    && test -d /build/src/arena/web/spa/assets
 
 # --- стадия 2: приложение --------------------------------------------------
 FROM python:3.11-slim
