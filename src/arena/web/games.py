@@ -54,6 +54,21 @@ STATUS_ERROR = "error"
 
 _SIDES: tuple[Side, Side] = ("white", "black")
 
+
+def with_language(
+    settings: PlayerSettings | None, language: str | None
+) -> PlayerSettings | None:
+    """Настройки партии с языком ответов моделей из интерфейса.
+
+    ``language`` пуст → настройки не трогаем (останется значение из
+    ``config.yaml``). Иначе — копия с ``response_language``: сам код языка
+    проверяет веб-слой, промпт молча игнорирует незнакомый.
+    """
+    if not language:
+        return settings
+    base = settings if settings is not None else PlayerSettings()
+    return base.model_copy(update={"response_language": language})
+
 # Игрок — утиный тип: достаточно ``.info`` (несекретное описание) и ``.respond``
 # (как у ``ModelPlayer``); раннер больше ничего не требует.
 PlayerFactory = Callable[[Side, ResolvedModel], object]
@@ -178,12 +193,15 @@ class GameManager:
         resolved: Mapping[Side, ResolvedModel],
         *,
         game_id: str | None = None,
+        language: str | None = None,
     ) -> GameSession:
         """Создать партию из резолвленных моделей и запустить её в фоновом потоке.
 
         ``resolved`` — модели по сторонам (с ключами, уже прошедшие fail-fast в
-        каталоге). Игроки строятся через ``player_factory``. Возвращает
-        зарегистрированную ``GameSession`` сразу (партия играется в фоне).
+        каталоге). Игроки строятся через ``player_factory``. ``language`` — язык
+        интерфейса того, кто запустил партию: на нём модели пишут рассуждения и
+        план. Возвращает зарегистрированную ``GameSession`` сразу (партия играется
+        в фоне).
         """
         players = {side: self._player_factory(side, resolved[side]) for side in _SIDES}
         game_id = game_id or uuid.uuid4().hex[:12]
@@ -191,7 +209,7 @@ class GameManager:
             players,
             game_id=game_id,
             created_at=self._clock(),
-            settings=self._player_settings,
+            settings=with_language(self._player_settings, language),
         )
         session = GameSession(
             id=game_id, players=dict(record.players), record=record

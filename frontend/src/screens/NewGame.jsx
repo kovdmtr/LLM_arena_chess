@@ -5,7 +5,7 @@ import Link from '../components/Link.jsx'
 import ModelChip from '../components/ModelChip.jsx'
 import ModelPicker from '../components/ModelPicker.jsx'
 import { ErrorBanner, Skeletons } from '../components/States.jsx'
-import { useT } from '../lib/LangContext.jsx'
+import { useLang, useT } from '../lib/LangContext.jsx'
 import { api } from '../lib/api.js'
 import { indexModels } from '../lib/models.js'
 import { navigate } from '../lib/navigation.js'
@@ -15,6 +15,7 @@ import { useAsync } from '../lib/useAsync.js'
 
 export default function NewGame() {
   const t = useT()
+  const { lang } = useLang()
   const catalog = useAsync(() => api.models(), [])
   const models = catalog.data || []
   const [pick, setPick] = useState({ white: '', black: '' })
@@ -35,7 +36,9 @@ export default function NewGame() {
     setStartError(null)
     setStarting(true)
     try {
-      const { id } = await api.startGame(pick.white, pick.black)
+      // язык интерфейса уезжает вместе со стартом: на нём модели будут
+      // рассуждать и вести план, чтобы отчёт не оказался двуязычным
+      const { id } = await api.startGame(pick.white, pick.black, lang)
       navigate(hrefFor('game', { id }))
     } catch (error) {
       setStartError(error)
@@ -113,6 +116,10 @@ export default function NewGame() {
             <span>💳</span>
             <span>{t('newGame.cost')}</span>
           </div>
+
+          <p className="hint" style={{ marginTop: 12 }}>
+            {t('newGame.language')}
+          </p>
 
           {blockedKey && (
             <p className="hint" style={{ marginTop: 14 }}>

@@ -61,6 +61,7 @@ export const RU = {
   'newGame.blackShort': '♚ ЧЁРНЫЕ',
   'newGame.cost':
     'Запуск партии — реальные вызовы API обеих моделей: это тратит деньги на ключах. Подсказки Stockfish (до 3 на сторону) и разбор качества ходов включаются автоматически, если движок доступен.',
+  'newGame.language': 'Модели будут рассуждать и вести план по-русски — как язык интерфейса.',
   'newGame.start': '▶ Запустить партию',
   'newGame.starting': 'Запускаем…',
   'newGame.blocked.noModels': 'Нет доступных моделей: не задан ни один API-ключ (см. .env).',
@@ -162,6 +163,7 @@ export const EN = {
   'newGame.blackShort': '♚ BLACK',
   'newGame.cost':
     'Starting a game makes real API calls for both models, spending money on your keys. Stockfish hints (up to 3 per side) and move-quality analysis switch on automatically when the engine is available.',
+  'newGame.language': 'The models will reason and keep their plan in English — the interface language.',
   'newGame.start': '▶ Start game',
   'newGame.starting': 'Starting…',
   'newGame.blocked.noModels': 'No models available: no API key is configured (see .env).',

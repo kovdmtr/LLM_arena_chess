@@ -4,6 +4,7 @@ from arena.prompts.context import build_context, context_message
 from arena.prompts.system import (
     RESPONSE_KEYS,
     STRATEGY_KEYS,
+    SUPPORTED_LANGUAGES,
     build_system_prompt,
     system_message,
 )
@@ -11,6 +12,7 @@ from arena.prompts.system import (
 __all__ = [
     "RESPONSE_KEYS",
     "STRATEGY_KEYS",
+    "SUPPORTED_LANGUAGES",
     "build_context",
     "build_system_prompt",
     "context_message",

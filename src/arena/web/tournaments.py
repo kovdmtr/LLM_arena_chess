@@ -38,7 +38,12 @@ from arena.tournament import (
     export_tournament,
     new_tournament_record,
 )
-from arena.web.games import STATUS_ERROR, STATUS_FINISHED, STATUS_RUNNING
+from arena.web.games import (
+    STATUS_ERROR,
+    STATUS_FINISHED,
+    STATUS_RUNNING,
+    with_language,
+)
 
 _log = get_logger("web")
 
@@ -65,6 +70,8 @@ class TournamentSession:
     status: str = STATUS_RUNNING
     standings: StatsTable | None = None
     error: str | None = None
+    # настройки партий этого турнира (язык ответов моделей — из интерфейса)
+    player_settings: PlayerSettings | None = None
     _done: threading.Event = field(default_factory=threading.Event, repr=False)
 
     def join(self, timeout: float | None = None) -> bool:
@@ -152,8 +159,13 @@ class TournamentManager:
         *,
         double: bool = False,
         tournament_id: str | None = None,
+        language: str | None = None,
     ) -> TournamentSession:
-        """Создать турнир из участников и запустить его в фоновом потоке."""
+        """Создать турнир из участников и запустить его в фоновом потоке.
+
+        ``language`` — язык интерфейса запустившего: на нём модели пишут
+        рассуждения и план во всех партиях турнира.
+        """
         tournament_id = tournament_id or f"t-{uuid.uuid4().hex[:10]}"
         record = new_tournament_record(
             participants,
@@ -161,7 +173,11 @@ class TournamentManager:
             created_at=self._clock(),
             double=double,
         )
-        session = TournamentSession(id=tournament_id, record=record)
+        session = TournamentSession(
+            id=tournament_id,
+            record=record,
+            player_settings=with_language(self._player_settings, language),
+        )
         with self._lock:
             self._sessions[tournament_id] = session
         _log.info(
@@ -188,7 +204,7 @@ class TournamentManager:
                 engine_factory=self._engine_factory,
                 analysis_config=self._analysis_config,
                 analysis_depth=self._analysis_depth,
-                player_settings=self._player_settings,
+                player_settings=session.player_settings or self._player_settings,
                 max_plies=self._max_plies,
             ).run()
             session.standings = outcome.standings

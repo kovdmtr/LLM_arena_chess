@@ -213,3 +213,30 @@ def test_tournament_detail_404_for_unknown(tmp_path):
     client = _client(_manager(tmp_path))
 
     assert client.get("/api/tournaments/nope").status_code == 404
+
+
+# --- язык интерфейса → язык ответов моделей во всех партиях турнира -----------
+
+def test_start_tournament_stores_ui_language(tmp_path):
+    manager = _manager(tmp_path, gate=threading.Event())
+    client = _client(manager)
+
+    response = client.post(
+        "/api/tournaments",
+        json={"models": ["champ", "weak"], "double": False, "language": "en"},
+    )
+
+    assert response.status_code == 201, response.text
+    session = manager.get(response.json()["id"])
+    assert session.player_settings is not None
+    assert session.player_settings.response_language == "en"
+
+
+def test_start_tournament_without_language_keeps_default(tmp_path):
+    manager = _manager(tmp_path, gate=threading.Event())
+    client = _client(manager)
+
+    response = client.post("/api/tournaments", json={"models": ["champ", "weak"]})
+
+    session = manager.get(response.json()["id"])
+    assert session.player_settings is None

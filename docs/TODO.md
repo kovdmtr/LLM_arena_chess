@@ -135,7 +135,7 @@ SPA с реальной сборкой (Vite + React), раздаётся FastAP
 - [x] `feat(frontend): new game screen` — каталог из `/api/models` карточками по провайдерам (`ModelPicker`; без ключа — видна, но не выбирается, как и на бэкенде), превью пары «белые vs чёрные», предупреждение о платных вызовах, старт через `POST /api/games` → переход на `/games/{id}`; чистая логика выбора `lib/newGame.js` (дефолтный выбор, причина блокировки старта — те же правила, что проверит бэкенд).
 - [x] `feat(frontend): i18n RU/EN` — словари + `t()` (плюрализация через `Intl.PluralRules`), переключатель языка в шапке, выбор сохраняется; строгое разделение: ни одной русской строки в EN и наоборот, тексты не «зашиты» в данные (`format`/`newGame`/`api` возвращают ключи, не фразы).
 - [x] `feat(arena): model response language` — язык ответов модели (`reasoning`/`strategy`, комментарий ключевых моментов) следует выбору интерфейса: `response_language` в `PlayerSettings`/`config.yaml` → пункт системного промпта; по умолчанию поведение прежнее.
-- [ ] `feat(web): pass ui language when starting game/tournament` — `language` в `POST /api/games`/`/api/tournaments` → `PlayerSettings.response_language`; фронт шлёт текущий язык интерфейса.
+- [x] `feat(web): pass ui language when starting game/tournament` — `language` в `POST /api/games`/`/api/tournaments` → `PlayerSettings.response_language`; фронт шлёт текущий язык интерфейса.
 - [ ] `feat(frontend): live game screen` — WS-протокол (§3 FRONTEND.md), доска из FEN, ходы парами, мысли модели.
 - [ ] `feat(frontend): game report screen` — плеер из `GameRecord` (оценки, классы, план, точность), «Скачать PGN».
 - [ ] `feat(frontend): tournaments screens` — создание, список, детали (таблица + расписание, живой прогресс).

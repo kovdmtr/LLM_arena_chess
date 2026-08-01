@@ -101,9 +101,11 @@ export const api = {
   models: () => getJson('/api/models'),
   games: () => getJson('/api/games'),
   game: (id) => getJson(`/api/games/${encodeURIComponent(id)}`),
-  startGame: (white, black) => postJson('/api/games', { white, black }),
+  // language — язык интерфейса: на нём модели пишут рассуждения и план
+  startGame: (white, black, language) => postJson('/api/games', { white, black, language }),
   pgnUrl: (id) => withToken(`/api/games/${encodeURIComponent(id)}/pgn`, currentSearch()),
   tournaments: () => getJson('/api/tournaments'),
   tournament: (id) => getJson(`/api/tournaments/${encodeURIComponent(id)}`),
-  startTournament: (models, double) => postJson('/api/tournaments', { models, double }),
+  startTournament: (models, double, language) =>
+    postJson('/api/tournaments', { models, double, language }),
 }

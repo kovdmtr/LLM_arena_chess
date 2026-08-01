@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from arena.config import ConfigError, ModelCatalog
 from arena.core import build_pgn
 from arena.models import PlayerInfo
+from arena.prompts import SUPPORTED_LANGUAGES
 from arena.providers import ProviderError
 from arena.web.games import STATUS_FINISHED, GameInfo, GameManager
 from arena.web.tournaments import TournamentInfo, TournamentManager
@@ -34,17 +35,29 @@ _UNSAFE_FILENAME = re.compile(r"[^A-Za-z0-9._-]")
 
 
 class StartGameRequest(BaseModel):
-    """Тело ``POST /api/games``: идентификаторы моделей по сторонам."""
+    """Тело ``POST /api/games``: модели по сторонам и язык интерфейса."""
 
     white: str
     black: str
+    language: str | None = None
 
 
 class StartTournamentRequest(BaseModel):
-    """Тело ``POST /api/tournaments``: участники (≥2) и формат (один/два круга)."""
+    """Тело ``POST /api/tournaments``: участники (≥2), формат и язык интерфейса."""
 
     models: list[str]
     double: bool = False
+    language: str | None = None
+
+
+def _normalize_language(code: str | None) -> str | None:
+    """Код языка интерфейса → поддерживаемый промптом или ``None``.
+
+    Незнакомый код не ошибка: партия просто играется без указания языка (как и
+    было до фичи), а не падает с 400 из-за косметического поля.
+    """
+    normalized = (code or "").strip().lower()
+    return normalized if normalized in SUPPORTED_LANGUAGES else None
 
 
 def build_api_router(
@@ -88,7 +101,9 @@ def build_api_router(
                 "white": catalog.resolve(payload.white),
                 "black": catalog.resolve(payload.black),
             }
-            session = get_manager(request.app).start(resolved)
+            session = get_manager(request.app).start(
+                resolved, language=_normalize_language(payload.language)
+            )
         except (ConfigError, ProviderError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return {"id": session.id}
@@ -165,7 +180,9 @@ def build_api_router(
         except ConfigError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         session = get_tournament_manager(request.app).start(
-            participants, double=payload.double
+            participants,
+            double=payload.double,
+            language=_normalize_language(payload.language),
         )
         return {"id": session.id}
 

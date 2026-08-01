@@ -219,3 +219,53 @@ def test_pgn_endpoint_404_for_unknown_game(tmp_path):
     client = _client(tmp_path)
 
     assert client.get("/api/games/nope/pgn").status_code == 404
+
+
+# --- язык интерфейса → язык ответов моделей -----------------------------------
+
+def test_start_game_stores_ui_language_in_settings(tmp_path):
+    """Язык интерфейса доезжает до настроек партии — на нём модели рассуждают."""
+    client = _client(tmp_path)
+
+    response = client.post(
+        "/api/games", json={"white": "w-model", "black": "b-model", "language": "en"}
+    )
+    assert response.status_code == 201, response.text
+    game_id = response.json()["id"]
+
+    record = client.app.state.game_manager.get(game_id).record
+    assert record.settings.response_language == "en"
+
+
+def test_start_game_without_language_keeps_config_default(tmp_path):
+    client = _client(tmp_path)
+
+    game_id = _play(client)
+
+    record = client.app.state.game_manager.load_record(game_id)
+    assert record.settings.response_language is None
+
+
+def test_start_game_ignores_unsupported_language(tmp_path):
+    """Незнакомый код языка не роняет старт — партия идёт без указания языка."""
+    client = _client(tmp_path)
+
+    response = client.post(
+        "/api/games", json={"white": "w-model", "black": "b-model", "language": "klingon"}
+    )
+    assert response.status_code == 201, response.text
+
+    record = client.app.state.game_manager.get(response.json()["id"]).record
+    assert record.settings.response_language is None
+
+
+def test_language_code_is_normalized(tmp_path):
+    client = _client(tmp_path)
+
+    response = client.post(
+        "/api/games", json={"white": "w-model", "black": "b-model", "language": " RU "}
+    )
+    assert response.status_code == 201, response.text
+
+    record = client.app.state.game_manager.get(response.json()["id"]).record
+    assert record.settings.response_language == "ru"

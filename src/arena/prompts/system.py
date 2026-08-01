@@ -64,6 +64,9 @@ plan relates to your previous one (use "start" on your first move)."""
 # Ход остаётся в шахматной нотации: она от языка не зависит.
 _LANGUAGE_NAMES = {"ru": "Russian", "en": "English"}
 
+#: Коды языков, которые промпт умеет запросить (единый источник истины для веб-слоя).
+SUPPORTED_LANGUAGES: tuple[str, ...] = tuple(_LANGUAGE_NAMES)
+
 _LANGUAGE_CLAUSE = """
 
 Language:
