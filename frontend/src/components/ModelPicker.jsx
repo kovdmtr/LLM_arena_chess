@@ -1,16 +1,18 @@
 /* Выбор модели: карточки, сгруппированные по провайдеру.
  * Модель без ключа показывается, но выбрать её нельзя (как и на бэкенде). */
+import { useT } from '../lib/LangContext.jsx'
 import { groupByProvider, providerLabel } from '../lib/models.js'
 import { Avatar } from './ModelChip.jsx'
 
 function ModelOption({ model, selected, onPick }) {
+  const t = useT()
   const disabled = !model.has_key
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={() => onPick(model.id)}
-      title={disabled ? 'Ключ провайдера не задан' : model.id}
+      title={disabled ? t('model.noKeyTitle') : model.id}
       style={{
         width: '100%',
         display: 'flex',
@@ -36,7 +38,7 @@ function ModelOption({ model, selected, onPick }) {
       </span>
       {disabled ? (
         <span className="badge" style={{ flex: 'none' }}>
-          ключ не задан
+          {t('model.noKey')}
         </span>
       ) : (
         selected && <span style={{ color: 'var(--accent-text)', fontWeight: 800 }}>✓</span>

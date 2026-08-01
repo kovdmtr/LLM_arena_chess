@@ -1,6 +1,10 @@
-/* Форматирование данных API для интерфейса. Чистые функции — под тестами. */
+/* Форматирование данных API. Чистые функции — под тестами.
+ *
+ * Текстов здесь нет: функции возвращают ключ словаря и параметры, а фразу
+ * подставляет `t` в компоненте. Так интерфейс остаётся строго одноязычным.
+ */
 
-/** Итог партии человеку: половинки дробью, незавершённая — прочерк. */
+/** Итог партии человеку: половинки дробью, незавершённая — прочерк. Язык не нужен. */
 export function resultLabel(result) {
   switch (result) {
     case '1-0':
@@ -23,17 +27,17 @@ export function winnerOf(result) {
 }
 
 /**
- * Статус партии бейджем: `{ text, className }`.
+ * Статус партии бейджем: `{ key, className, dot }`.
  *
  * Идущая партия важнее статуса из записи — её и подсвечиваем «в эфире».
  */
 export function statusBadge(game) {
-  if (game.live) return { text: 'В ЭФИРЕ', className: 'badge badge-live', dot: true }
-  if (game.status === 'error') return { text: 'Ошибка', className: 'badge badge-live' }
+  if (game.live) return { key: 'status.live', className: 'badge badge-live', dot: true }
+  if (game.status === 'error') return { key: 'status.error', className: 'badge badge-live' }
   if (game.result && game.result !== '*') {
-    return { text: 'Завершена', className: 'badge badge-done' }
+    return { key: 'status.finished', className: 'badge badge-done' }
   }
-  return { text: 'Прервана', className: 'badge' }
+  return { key: 'status.aborted', className: 'badge' }
 }
 
 const MINUTE = 60_000
@@ -45,31 +49,28 @@ function pad(value) {
 }
 
 /**
- * Когда была партия: «только что», «12 мин назад», «сегодня 14:03», дата.
+ * Когда была партия: `{ key, params }` — «только что», «N мин назад»,
+ * «сегодня HH:MM» или дата в формате языка.
  *
- * `now` инжектится, чтобы тест не зависел от текущего времени.
+ * `now` инжектится, чтобы тест не зависел от текущего времени; `lang` нужен
+ * только для порядка чисел в дате (01.08.2026 против 08/01/2026).
  */
-export function formatWhen(iso, now = new Date()) {
+export function formatWhen(iso, now = new Date(), lang = 'ru') {
   const then = new Date(iso)
-  if (Number.isNaN(then.getTime())) return ''
+  if (Number.isNaN(then.getTime())) return null
   const diff = now.getTime() - then.getTime()
 
-  if (diff < MINUTE) return 'только что'
-  if (diff < HOUR) return `${Math.floor(diff / MINUTE)} мин назад`
+  if (diff < MINUTE) return { key: 'time.justNow' }
+  if (diff < HOUR) return { key: 'time.minutesAgo', params: { count: Math.floor(diff / MINUTE) } }
   if (diff < DAY && then.getDate() === now.getDate()) {
-    return `сегодня ${pad(then.getHours())}:${pad(then.getMinutes())}`
+    return { key: 'time.today', params: { time: `${pad(then.getHours())}:${pad(then.getMinutes())}` } }
   }
-  return `${pad(then.getDate())}.${pad(then.getMonth() + 1)}.${then.getFullYear()}`
-}
-
-/** Русское склонение по числу: 1 партия, 2 партии, 5 партий. */
-export function plural(n, one, few, many) {
-  const mod100 = Math.abs(n) % 100
-  const mod10 = Math.abs(n) % 10
-  if (mod100 >= 11 && mod100 <= 14) return many
-  if (mod10 === 1) return one
-  if (mod10 >= 2 && mod10 <= 4) return few
-  return many
+  const date = new Intl.DateTimeFormat(lang, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(then)
+  return { key: 'time.date', params: { date } }
 }
 
 /** Прогресс турнира строкой: «3 / 6». */

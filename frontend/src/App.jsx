@@ -8,6 +8,7 @@ import { useState } from 'react'
 
 import Footer from './components/Footer.jsx'
 import Header from './components/Header.jsx'
+import { LangProvider } from './lib/LangContext.jsx'
 import { useRoute } from './lib/navigation.js'
 import { applyTheme, nextTheme, storeTheme } from './lib/theme.js'
 import Archive from './screens/Archive.jsx'
@@ -24,25 +25,17 @@ function Screen({ route }) {
     case 'new-game':
       return <NewGame />
     case 'game':
-      return (
-        <Placeholder
-          title={`Партия ${route.params.id}`}
-          note="Живой просмотр и отчёт приедут отдельными задачами плана."
-        />
-      )
+      return <Placeholder titleKey="wip.game.title" noteKey="wip.game.note" params={route.params} />
     case 'tournaments':
-      return <Placeholder title="Турниры" note="Список турниров приедет отдельной задачей плана." />
+      return <Placeholder titleKey="wip.tournaments.title" noteKey="wip.tournaments.note" />
     case 'new-tournament':
-      return <Placeholder title="Новый турнир" note="Создание турнира приедет отдельной задачей плана." />
+      return <Placeholder titleKey="wip.newTournament.title" noteKey="wip.newTournament.note" />
     case 'tournament':
       return (
-        <Placeholder
-          title={`Турнир ${route.params.id}`}
-          note="Таблица и расписание приедут отдельной задачей плана."
-        />
+        <Placeholder titleKey="wip.tournament.title" noteKey="wip.tournament.note" params={route.params} />
       )
     default:
-      return <Placeholder title="Страница не найдена" note="Проверьте адрес — такого экрана нет." />
+      return <Placeholder titleKey="notFound.title" noteKey="notFound.note" eyebrowKey="notFound.eyebrow" />
   }
 }
 
@@ -60,12 +53,14 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <Header route={route} theme={theme} onToggleTheme={toggleTheme} />
-      <main style={{ flex: 1 }}>
-        <Screen route={route} />
-      </main>
-      <Footer />
-    </div>
+    <LangProvider>
+      <div className="app">
+        <Header route={route} theme={theme} onToggleTheme={toggleTheme} />
+        <main style={{ flex: 1 }}>
+          <Screen route={route} />
+        </main>
+        <Footer />
+      </div>
+    </LangProvider>
   )
 }

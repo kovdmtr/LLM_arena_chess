@@ -1,4 +1,5 @@
 /* Строка-карточка партии для главной и архива: стороны, статус, итог, время. */
+import { useLang, useT } from '../lib/LangContext.jsx'
 import { formatWhen, resultLabel, statusBadge } from '../lib/format.js'
 import { hrefFor } from '../lib/router.js'
 import Link from './Link.jsx'
@@ -24,7 +25,10 @@ function ResultBadge({ result }) {
 }
 
 export default function GameCard({ game, catalog }) {
+  const t = useT()
+  const { lang } = useLang()
   const badge = statusBadge(game)
+  const when = formatWhen(game.created_at, new Date(), lang)
   const white = catalog && catalog.find(game.white)
   const black = catalog && catalog.find(game.black)
 
@@ -41,13 +45,13 @@ export default function GameCard({ game, catalog }) {
         <div className="row gap-2" style={{ minWidth: 0 }}>
           <span className={badge.className} style={{ flex: 'none' }}>
             {badge.dot && <span className="dot" />}
-            {badge.text}
+            {t(badge.key)}
           </span>
           <span className="mono" style={{ color: 'var(--faint)', fontSize: 11.5 }}>
             {game.id}
           </span>
           <span style={{ color: 'var(--faint)', fontSize: 12, marginLeft: 'auto', flex: 'none' }}>
-            {formatWhen(game.created_at)}
+            {when ? t(when.key, when.params) : ''}
           </span>
         </div>
       </div>

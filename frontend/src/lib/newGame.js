@@ -23,24 +23,24 @@ export function defaultPick(models = []) {
 }
 
 /**
- * Почему нельзя стартовать; `null` — можно.
+ * Почему нельзя стартовать: ключ словаря; `null` — можно.
  *
  * Проверяем ровно то, что проверит бэкенд, чтобы не ловить 400 в форме.
+ * Ключи по сторонам разные (а не подстановка слова «белых»/«чёрных») — так
+ * перевод остаётся грамматичным в обоих языках.
  */
 export function startBlockedReason(white, black, models = []) {
-  if (playable(models).length === 0) {
-    return 'Нет доступных моделей: не задан ни один API-ключ (см. .env).'
-  }
-  if (!white || !black) return 'Выберите модель для обеих сторон.'
+  if (playable(models).length === 0) return 'newGame.blocked.noModels'
+  if (!white || !black) return 'newGame.blocked.notPicked'
 
   const index = new Map(models.map((model) => [model.id, model]))
   for (const [side, id] of [
-    ['белых', white],
-    ['чёрных', black],
+    ['White', white],
+    ['Black', black],
   ]) {
     const model = index.get(id)
-    if (!model) return `Модель для ${side} не найдена в каталоге.`
-    if (!model.has_key) return `Для ${side} выбрана модель без ключа — она недоступна.`
+    if (!model) return `newGame.blocked.unknown${side}`
+    if (!model.has_key) return `newGame.blocked.noKey${side}`
   }
   return null
 }

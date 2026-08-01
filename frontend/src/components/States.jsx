@@ -1,8 +1,10 @@
 /* Состояния данных: загрузка (скелетон), пусто, ошибка (DESIGN_BRIEF §3). */
+import { useT } from '../lib/LangContext.jsx'
 
 export function Skeletons({ count = 3, height = 68 }) {
+  const t = useT()
   return (
-    <div className="col gap-2" aria-busy="true" aria-label="Загрузка">
+    <div className="col gap-2" aria-busy="true" aria-label={t('state.loading')}>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="skeleton" style={{ height }} />
       ))}
@@ -20,11 +22,14 @@ export function Empty({ title, children }) {
 }
 
 export function ErrorBanner({ error }) {
+  const t = useT()
   if (!error) return null
+  // ключ словаря переводим, текст бэкенда показываем как есть
+  const text = error.key ? t(error.key, error.params) : error.text || error.message || String(error)
   return (
     <div className="banner banner-error" role="alert">
       <span>⚠</span>
-      <span>{error.message || String(error)}</span>
+      <span>{text}</span>
     </div>
   )
 }

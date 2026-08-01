@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { errorMessage, tokenFrom, withToken } from './api.js'
+import { errorInfo, tokenFrom, withToken } from './api.js'
+import { createT } from './i18n.js'
 
 describe('токен доступа', () => {
   it('достаётся из query-строки', () => {
@@ -30,22 +31,26 @@ describe('токен доступа', () => {
   })
 })
 
-describe('errorMessage', () => {
+describe('errorInfo', () => {
   it('берёт detail строкой — так бэкенд отдаёт понятные ошибки формы', () => {
-    expect(errorMessage({ detail: 'Ключ для модели не задан.' }, 400)).toBe(
-      'Ключ для модели не задан.',
-    )
+    expect(errorInfo({ detail: 'Ключ для модели не задан.' }, 400)).toEqual({
+      text: 'Ключ для модели не задан.',
+    })
   })
 
   it('склеивает detail списком (ошибки валидации FastAPI)', () => {
-    expect(errorMessage({ detail: [{ msg: 'field required' }, { msg: 'too short' }] }, 422)).toBe(
-      'field required; too short',
-    )
+    expect(errorInfo({ detail: [{ msg: 'field required' }, { msg: 'too short' }] }, 422)).toEqual({
+      text: 'field required; too short',
+    })
   })
 
-  it('без detail даёт текст по статусу', () => {
-    expect(errorMessage(null, 404)).toBe('Не найдено.')
-    expect(errorMessage({}, 403)).toContain('токеном')
-    expect(errorMessage(null, 500)).toContain('500')
+  it('без detail отдаёт ключ словаря — он переводится на язык интерфейса', () => {
+    expect(errorInfo(null, 404)).toEqual({ key: 'error.notFound' })
+    expect(errorInfo({}, 403)).toEqual({ key: 'error.forbidden' })
+    expect(errorInfo(null, 500)).toEqual({ key: 'error.generic', params: { status: 500 } })
+
+    const info = errorInfo(null, 500)
+    expect(createT('en')(info.key, info.params)).toBe('Request failed (500).')
+    expect(createT('ru')(info.key, info.params)).toBe('Ошибка запроса (500).')
   })
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { RU } from '../i18n/messages.js'
 import { defaultPick, playable, startBlockedReason } from './newGame.js'
 
 const OPENAI = { id: 'gpt-4o', display_name: 'GPT-4o', provider: 'openai', has_key: true }
@@ -38,17 +39,29 @@ describe('startBlockedReason', () => {
     expect(startBlockedReason(OPENAI.id, OPENAI.id, catalog)).toBeNull()
   })
 
-  it('модель без ключа блокирует старт (как и бэкенд)', () => {
-    expect(startBlockedReason(NO_KEY.id, CLAUDE.id, catalog)).toContain('белых')
-    expect(startBlockedReason(OPENAI.id, NO_KEY.id, catalog)).toContain('чёрных')
+  it('модель без ключа блокирует старт (как и бэкенд), ключ — по сторонам', () => {
+    expect(startBlockedReason(NO_KEY.id, CLAUDE.id, catalog)).toBe('newGame.blocked.noKeyWhite')
+    expect(startBlockedReason(OPENAI.id, NO_KEY.id, catalog)).toBe('newGame.blocked.noKeyBlack')
   })
 
   it('пустой выбор и модель вне каталога', () => {
-    expect(startBlockedReason('', CLAUDE.id, catalog)).toBe('Выберите модель для обеих сторон.')
-    expect(startBlockedReason('нет-такой', CLAUDE.id, catalog)).toContain('не найдена')
+    expect(startBlockedReason('', CLAUDE.id, catalog)).toBe('newGame.blocked.notPicked')
+    expect(startBlockedReason('нет-такой', CLAUDE.id, catalog)).toBe('newGame.blocked.unknownWhite')
   })
 
   it('каталог без ключей объясняет, что чинить', () => {
-    expect(startBlockedReason('', '', [NO_KEY])).toContain('.env')
+    expect(startBlockedReason('', '', [NO_KEY])).toBe('newGame.blocked.noModels')
+  })
+
+  it('все причины блокировки есть в словарях', () => {
+    const keys = [
+      startBlockedReason('', '', [NO_KEY]),
+      startBlockedReason('', CLAUDE.id, catalog),
+      startBlockedReason(NO_KEY.id, CLAUDE.id, catalog),
+      startBlockedReason(OPENAI.id, NO_KEY.id, catalog),
+      startBlockedReason('нет-такой', CLAUDE.id, catalog),
+      startBlockedReason(OPENAI.id, 'нет-такой', catalog),
+    ]
+    for (const key of keys) expect(RU[key]).toBeTruthy()
   })
 })

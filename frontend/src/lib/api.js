@@ -6,11 +6,20 @@
  * поэтому токен из адресной строки на всякий случай прокидываем в каждый запрос.
  */
 
-/** Ошибка API: несёт HTTP-статус и человекочитаемый текст для баннера. */
+/**
+ * Ошибка API для баннера.
+ *
+ * Текст берётся из двух источников: `key`/`params` — наш словарь (переводится
+ * на язык интерфейса), `text` — сообщение самого бэкенда (`detail`), которое
+ * показываем как есть: оно объясняет отказ конкретнее любого общего перевода.
+ */
 export class ApiError extends Error {
-  constructor(message, status) {
-    super(message)
+  constructor({ key, params, text, status }) {
+    super(text || key || 'error.generic')
     this.name = 'ApiError'
+    this.key = key || null
+    this.params = params || null
+    this.text = text || null
     this.status = status
   }
 }
@@ -29,17 +38,21 @@ export function withToken(path, search) {
   return `${path}${sep}token=${encodeURIComponent(token)}`
 }
 
-/** Текст ошибки из ответа FastAPI: `detail` строкой, списком или ничем. */
-export function errorMessage(body, status) {
+/**
+ * Что показать по ответу FastAPI: `{text}` из `detail` либо ключ словаря.
+ *
+ * `detail` бэкенд шлёт строкой (человекочитаемая причина отказа) или списком
+ * (ошибки валидации). Своего перевода у этих строк нет — показываем как есть.
+ */
+export function errorInfo(body, status) {
   const detail = body && body.detail
-  if (typeof detail === 'string' && detail) return detail
+  if (typeof detail === 'string' && detail) return { text: detail }
   if (Array.isArray(detail) && detail.length) {
-    const parts = detail.map((item) => (item && item.msg) || String(item))
-    return parts.join('; ')
+    return { text: detail.map((item) => (item && item.msg) || String(item)).join('; ') }
   }
-  if (status === 404) return 'Не найдено.'
-  if (status === 403) return 'Нет доступа: откройте сайт по ссылке с токеном.'
-  return `Ошибка запроса (${status}).`
+  if (status === 404) return { key: 'error.notFound' }
+  if (status === 403) return { key: 'error.forbidden' }
+  return { key: 'error.generic', params: { status } }
 }
 
 function currentSearch() {
@@ -54,7 +67,7 @@ async function request(path, options = {}) {
       ...options,
     })
   } catch (cause) {
-    throw new ApiError('Сервер недоступен — проверьте, что бэкенд запущен.', 0)
+    throw new ApiError({ key: 'error.network', status: 0 })
   }
   if (response.status === 204) return null
 
@@ -64,7 +77,7 @@ async function request(path, options = {}) {
   } catch {
     body = null
   }
-  if (!response.ok) throw new ApiError(errorMessage(body, response.status), response.status)
+  if (!response.ok) throw new ApiError({ ...errorInfo(body, response.status), status: response.status })
   return body
 }
 

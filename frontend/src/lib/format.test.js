@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatWhen, plural, progressLabel, resultLabel, statusBadge, winnerOf } from './format.js'
+import { createT } from './i18n.js'
+import { formatWhen, progressLabel, resultLabel, statusBadge, winnerOf } from './format.js'
 
 describe('resultLabel', () => {
   it('переводит результат бэкенда в шахматную запись', () => {
@@ -25,58 +26,62 @@ describe('winnerOf', () => {
 })
 
 describe('statusBadge', () => {
-  it('идущая партия помечается «в эфире» с точкой', () => {
+  it('отдаёт ключ словаря, а не готовую фразу', () => {
     const badge = statusBadge({ live: true, status: 'running', result: '*' })
-    expect(badge.text).toBe('В ЭФИРЕ')
+    expect(badge.key).toBe('status.live')
     expect(badge.className).toContain('badge-live')
     expect(badge.dot).toBe(true)
+    expect(createT('en')(badge.key)).toBe('LIVE')
   })
 
   it('завершённая — по результату, а не по статусу сессии', () => {
-    expect(statusBadge({ live: false, status: 'finished', result: '1-0' }).text).toBe('Завершена')
+    expect(statusBadge({ live: false, status: 'finished', result: '1-0' }).key).toBe('status.finished')
   })
 
   it('сбой провайдера виден отдельно от обычного финала', () => {
-    expect(statusBadge({ live: false, status: 'error', result: '*' }).text).toBe('Ошибка')
+    expect(statusBadge({ live: false, status: 'error', result: '*' }).key).toBe('status.error')
   })
 
   it('партия без результата и без эфира — прервана', () => {
-    expect(statusBadge({ live: false, status: 'finished', result: '*' }).text).toBe('Прервана')
+    expect(statusBadge({ live: false, status: 'finished', result: '*' }).key).toBe('status.aborted')
   })
 })
 
 describe('formatWhen', () => {
   const now = new Date('2026-08-01T15:00:00')
 
-  it('свежее время — относительное', () => {
-    expect(formatWhen('2026-08-01T14:59:30', now)).toBe('только что')
-    expect(formatWhen('2026-08-01T14:48:00', now)).toBe('12 мин назад')
+  it('свежее время — относительное, с параметром для склонения', () => {
+    expect(formatWhen('2026-08-01T14:59:30', now)).toEqual({ key: 'time.justNow' })
+    expect(formatWhen('2026-08-01T14:48:00', now)).toEqual({
+      key: 'time.minutesAgo',
+      params: { count: 12 },
+    })
   })
 
-  it('сегодня — время, раньше — дата', () => {
-    expect(formatWhen('2026-08-01T09:05:00', now)).toBe('сегодня 09:05')
-    expect(formatWhen('2026-07-30T09:05:00', now)).toBe('30.07.2026')
+  it('сегодня — время в 24-часовом виде', () => {
+    expect(formatWhen('2026-08-01T09:05:00', now)).toEqual({
+      key: 'time.today',
+      params: { time: '09:05' },
+    })
+  })
+
+  it('дата раскладывается по правилам языка', () => {
+    expect(formatWhen('2026-07-30T09:05:00', now, 'ru').params.date).toBe('30.07.2026')
+    expect(formatWhen('2026-07-30T09:05:00', now, 'en').params.date).toBe('07/30/2026')
   })
 
   it('вчерашний вечер не выдаётся за «сегодня»', () => {
-    expect(formatWhen('2026-07-31T23:30:00', now)).toBe('31.07.2026')
+    expect(formatWhen('2026-07-31T23:30:00', now).key).toBe('time.date')
   })
 
   it('мусорная дата не роняет карточку', () => {
-    expect(formatWhen('не дата', now)).toBe('')
+    expect(formatWhen('не дата', now)).toBeNull()
   })
-})
 
-describe('plural', () => {
-  it('склоняет по русским правилам', () => {
-    const форма = (n) => plural(n, 'партия', 'партии', 'партий')
-    expect(форма(1)).toBe('партия')
-    expect(форма(3)).toBe('партии')
-    expect(форма(5)).toBe('партий')
-    expect(форма(11)).toBe('партий')
-    expect(форма(21)).toBe('партия')
-    expect(форма(112)).toBe('партий')
-    expect(форма(0)).toBe('партий')
+  it('результат переводится обоими словарями', () => {
+    const when = formatWhen('2026-08-01T14:48:00', now)
+    expect(createT('ru')(when.key, when.params)).toBe('12 мин назад')
+    expect(createT('en')(when.key, when.params)).toBe('12 min ago')
   })
 })
 
