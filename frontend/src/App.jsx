@@ -12,6 +12,7 @@ import { useRoute } from './lib/navigation.js'
 import { applyTheme, nextTheme, storeTheme } from './lib/theme.js'
 import Archive from './screens/Archive.jsx'
 import Home from './screens/Home.jsx'
+import NewGame from './screens/NewGame.jsx'
 import Placeholder from './screens/Placeholder.jsx'
 
 function Screen({ route }) {
@@ -21,7 +22,7 @@ function Screen({ route }) {
     case 'archive':
       return <Archive />
     case 'new-game':
-      return <Placeholder title="Новая партия" note="Выбор моделей и старт партии — следующая задача." />
+      return <NewGame />
     case 'game':
       return (
         <Placeholder
