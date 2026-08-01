@@ -15,7 +15,10 @@ import Archive from './screens/Archive.jsx'
 import Game from './screens/Game.jsx'
 import Home from './screens/Home.jsx'
 import NewGame from './screens/NewGame.jsx'
+import NewTournament from './screens/NewTournament.jsx'
 import Placeholder from './screens/Placeholder.jsx'
+import Tournament from './screens/Tournament.jsx'
+import Tournaments from './screens/Tournaments.jsx'
 
 function Screen({ route }) {
   switch (route.name) {
@@ -28,13 +31,11 @@ function Screen({ route }) {
     case 'game':
       return <Game id={route.params.id} />
     case 'tournaments':
-      return <Placeholder titleKey="wip.tournaments.title" noteKey="wip.tournaments.note" />
+      return <Tournaments />
     case 'new-tournament':
-      return <Placeholder titleKey="wip.newTournament.title" noteKey="wip.newTournament.note" />
+      return <NewTournament />
     case 'tournament':
-      return (
-        <Placeholder titleKey="wip.tournament.title" noteKey="wip.tournament.note" params={route.params} />
-      )
+      return <Tournament id={route.params.id} />
     default:
       return <Placeholder titleKey="notFound.title" noteKey="notFound.note" eyebrowKey="notFound.eyebrow" />
   }

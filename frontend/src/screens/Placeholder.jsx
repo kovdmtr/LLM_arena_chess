@@ -1,9 +1,9 @@
-/* Заглушка экрана, который приедет следующей задачей плана (docs/TODO.md).
- * Нужна, чтобы навигация и deep links работали целиком уже сейчас. */
+/* Простой экран-сообщение: сейчас на нём живёт только «страница не найдена»
+ * (раньше — заглушки ещё не написанных экранов). */
 import Link from '../components/Link.jsx'
 import { useT } from '../lib/LangContext.jsx'
 
-export default function Placeholder({ titleKey, noteKey, params, eyebrowKey = 'wip.eyebrow' }) {
+export default function Placeholder({ titleKey, noteKey, params, eyebrowKey = 'notFound.eyebrow' }) {
   const t = useT()
   return (
     <div className="wrap fade-in" style={{ paddingTop: 40, paddingBottom: 64 }}>
