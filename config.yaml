@@ -68,10 +68,25 @@ models:                          # каталог выбираемых моде�
     display_name: "GPT-5.5 High"
     params: { temperature: null, max_tokens: 16384, reasoning: true, reasoning_effort: "high" }
 
+  # Claude: у моделей 5-й серии и Opus 4.8 параметр temperature объявлен
+  # устаревшим и отвергается с 400 → temperature: null. Haiku его ещё принимает.
+  - id: claude-opus-5
+    provider: anthropic
+    display_name: "Claude Opus 5"
+    params: { temperature: null, max_tokens: 2048 }
+  - id: claude-sonnet-5
+    provider: anthropic
+    display_name: "Claude Sonnet 5"
+    params: { temperature: null, max_tokens: 2048 }
   - id: claude-opus-4-8
     provider: anthropic
     display_name: "Claude Opus 4.8"
-    params: { temperature: null, max_tokens: 1024 }   # эта модель отвергает temperature (400)
+    params: { temperature: null, max_tokens: 1024 }
+  - id: claude-haiku-4-5
+    model: claude-haiku-4-5-20251001
+    provider: anthropic
+    display_name: "Claude Haiku 4.5"
+    params: { temperature: 0.2, max_tokens: 1024 }
 
   # Gemini: «думающие» модели тратят output-токены на размышления. С малым
   # лимитом (1024) бюджет съедается мыслями, текст ответа пустой → партия рвётся,

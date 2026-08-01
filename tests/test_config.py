@@ -289,3 +289,15 @@ def test_response_language_defaults_to_none_and_reaches_player_settings(tmp_path
 
     config = ArenaConfig(response_language="en")
     assert config.to_player_settings().response_language == "en"
+
+
+def test_default_catalog_has_several_claude_models():
+    """Клод заведён несколькими моделями — от Opus до быстрой Haiku."""
+    cfg = AppConfig.from_yaml(DEFAULT_CONFIG_PATH)
+    claude = [m for m in cfg.models if m.provider == "anthropic"]
+
+    assert len(claude) >= 3
+    # 5-я серия и Opus 4.8 отвергают temperature (400) — она должна быть снята
+    for model in claude:
+        if model.api_model.startswith(("claude-opus-5", "claude-sonnet-5", "claude-opus-4-8")):
+            assert model.params.temperature is None, model.id
