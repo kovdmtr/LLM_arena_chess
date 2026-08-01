@@ -1,47 +1,68 @@
-/* Каркас приложения: шапка с брендом, область экрана, подвал.
+/* Оболочка приложения: шапка, экран по текущему маршруту, подвал.
  *
- * На этом шаге — только оболочка дизайна; навигация, API-клиент и экраны
- * приезжают следующими задачами (см. docs/TODO.md).
+ * Экраны подключаются по мере готовности (docs/TODO.md, раздел «Редизайн
+ * фронтенда»); ещё не написанные показывают заглушку, но их адреса уже
+ * маршрутизируются — навигация и deep links работают целиком.
  */
+import { useState } from 'react'
+
+import Footer from './components/Footer.jsx'
+import Header from './components/Header.jsx'
+import { useRoute } from './lib/navigation.js'
+import { applyTheme, nextTheme, storeTheme } from './lib/theme.js'
+import Placeholder from './screens/Placeholder.jsx'
+
+function Screen({ route }) {
+  switch (route.name) {
+    case 'home':
+      return <Placeholder title="Арена" note="Главная приедет следующей задачей плана." />
+    case 'archive':
+      return <Placeholder title="Все партии" note="Архив партий приедет следующей задачей плана." />
+    case 'new-game':
+      return <Placeholder title="Новая партия" note="Выбор моделей и старт партии — следующая задача." />
+    case 'game':
+      return (
+        <Placeholder
+          title={`Партия ${route.params.id}`}
+          note="Живой просмотр и отчёт приедут отдельными задачами плана."
+        />
+      )
+    case 'tournaments':
+      return <Placeholder title="Турниры" note="Список турниров приедет отдельной задачей плана." />
+    case 'new-tournament':
+      return <Placeholder title="Новый турнир" note="Создание турнира приедет отдельной задачей плана." />
+    case 'tournament':
+      return (
+        <Placeholder
+          title={`Турнир ${route.params.id}`}
+          note="Таблица и расписание приедут отдельной задачей плана."
+        />
+      )
+    default:
+      return <Placeholder title="Страница не найдена" note="Проверьте адрес — такого экрана нет." />
+  }
+}
+
 export default function App() {
+  const route = useRoute()
+  const [theme, setTheme] = useState(
+    () => document.documentElement.getAttribute('data-theme') || 'light',
+  )
+
+  const toggleTheme = () => {
+    const value = nextTheme(theme)
+    applyTheme(value)
+    storeTheme(value)
+    setTheme(value)
+  }
+
   return (
     <div className="app">
-      <header className="hdr">
-        <div className="wrap hdr-in">
-          <div className="brand">
-            <span className="brand-mark">
-              <i>♟</i>
-              <i />
-              <i />
-              <i />
-            </span>
-            <span className="brand-name">
-              LLM Chess <b>Arena</b>
-            </span>
-          </div>
-          <div className="hdr-spacer" />
-        </div>
-      </header>
-
+      <Header route={route} theme={theme} onToggleTheme={toggleTheme} />
       <main style={{ flex: 1 }}>
-        <div className="wrap" style={{ padding: '48px 28px' }}>
-          <h1>LLM Chess Arena</h1>
-        </div>
+        <Screen route={route} />
       </main>
-
-      <footer style={{ borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
-        <div
-          className="wrap row"
-          style={{ justifyContent: 'space-between', alignItems: 'center', height: 64, flexWrap: 'wrap', gap: 12 }}
-        >
-          <span style={{ fontSize: 13, color: 'var(--muted)' }}>
-            LLM Chess Arena · FastAPI · python-chess · Stockfish
-          </span>
-          <span className="mono" style={{ fontSize: 12, color: 'var(--faint)' }}>
-            Источник истины — game.json → PGN + HTML
-          </span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

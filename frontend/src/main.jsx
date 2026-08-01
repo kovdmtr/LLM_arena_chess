@@ -17,6 +17,10 @@ import '@fontsource/spectral/800.css'
 
 import './styles/app.css'
 import App from './App.jsx'
+import { initTheme } from './lib/theme.js'
+
+// Тему ставим до первого рендера — иначе страница мигнёт светлой.
+initTheme()
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
