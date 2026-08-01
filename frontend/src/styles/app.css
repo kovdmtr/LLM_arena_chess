@@ -318,6 +318,30 @@ table.tbl tr.me td { background: var(--green-soft); }
 }
 .banner-error { background: var(--live-bg); color: var(--live-fg); border-color: transparent; font-weight: 600; }
 
+/* разбор партии: цвета классов ходов (те же классы, что у бэкенда) */
+.g-brilliant { color: var(--c-brilliant); }
+.g-good { color: var(--c-good); }
+.g-interesting { color: var(--c-interesting); }
+.g-inaccuracy { color: var(--c-inaccuracy); }
+.g-mistake { color: var(--c-mistake); }
+.g-blunder { color: var(--c-blunder); }
+.g-normal, .g-book { color: var(--muted); }
+.badge.g-brilliant, .badge.g-good, .badge.g-interesting,
+.badge.g-inaccuracy, .badge.g-mistake, .badge.g-blunder {
+  background: var(--paper-2); border: 1px solid currentColor;
+}
+.mv-cell.cur.g-brilliant, .mv-cell.cur.g-good, .mv-cell.cur.g-interesting,
+.mv-cell.cur.g-inaccuracy, .mv-cell.cur.g-mistake, .mv-cell.cur.g-blunder,
+.mv-cell.cur.g-normal, .mv-cell.cur.g-book { color: var(--on-accent); }
+
+/* подписанные блоки панели хода: мысли модели и план */
+.block { background: var(--paper-2); border-radius: var(--r-md); padding: 10px 12px; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); }
+.block-plan { background: var(--green-soft); }
+.block-label { display: block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+
+/* ползунок перемотки */
+.slider { flex: 1; accent-color: var(--green); height: 4px; cursor: pointer; }
+
 /* формы */
 .field select, .field input[type='text'] {
   font: inherit; font-size: 15px; color: var(--ink); background: var(--card);

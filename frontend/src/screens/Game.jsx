@@ -1,15 +1,15 @@
 /* Экран партии по deep link `/games/{id}`.
  *
- * Идущая партия → живой просмотр по WebSocket; завершённая → разбор (приедет
- * следующей задачей плана, пока заглушка). Такое же разветвление, как у
- * SSR-роута `GET /games/{id}` — адреса и поведение совпадают.
+ * Идущая партия → живой просмотр по WebSocket; завершённая → разбор с плеером.
+ * Такое же разветвление, как у SSR-роута `GET /games/{id}` — адреса и
+ * поведение совпадают.
  */
 import { ErrorBanner, Skeletons } from '../components/States.jsx'
 import { useT } from '../lib/LangContext.jsx'
 import { api } from '../lib/api.js'
 import { useAsync } from '../lib/useAsync.js'
 import LiveGame from './LiveGame.jsx'
-import Placeholder from './Placeholder.jsx'
+import Report from './Report.jsx'
 
 export default function Game({ id }) {
   const t = useT()
@@ -39,5 +39,5 @@ export default function Game({ id }) {
     return <LiveGame id={id} record={game.data.record} onFinished={game.reload} />
   }
 
-  return <Placeholder titleKey="wip.report.title" noteKey="wip.report.note" params={{ id }} />
+  return <Report record={game.data.record} />
 }
