@@ -1,6 +1,21 @@
-# LLM Chess Arena — образ веб-приложения (FastAPI + Uvicorn).
+# LLM Chess Arena — образ веб-приложения (FastAPI + Uvicorn + собранный SPA).
 # Сборка: docker build -t llm-chess-arena .
 # Запуск:  docker compose up -d   (см. docker-compose.yml и deploy/DEPLOY.md)
+
+# --- стадия 1: сборка фронтенда -------------------------------------------
+# Vite кладёт бандл в src/arena/web/spa (см. frontend/vite.config.js), откуда его
+# раздаёт FastAPI. В репозитории сборки нет (.gitignore), поэтому собираем здесь.
+FROM node:22-slim AS frontend
+WORKDIR /build
+
+# Сначала манифесты — слой с npm ci переиспользуется, пока зависимости не менялись.
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+RUN cd frontend && npm ci
+
+COPY frontend ./frontend
+RUN cd frontend && npm run build   # → /build/src/arena/web/spa
+
+# --- стадия 2: приложение --------------------------------------------------
 FROM python:3.11-slim
 
 # Stockfish — для ★-подсказок и пост-анализа. Без него приложение работает,
@@ -21,6 +36,9 @@ COPY src ./src
 COPY config.yaml ./config.yaml
 RUN pip install --no-cache-dir -e . \
     && sed -i 's#tools/bin/stockfish.exe#stockfish#' config.yaml
+
+# Собранный фронтенд из первой стадии (node в финальный образ не попадает).
+COPY --from=frontend /build/src/arena/web/spa ./src/arena/web/spa
 
 # Секреты НЕ копируются в образ — они приходят как переменные окружения
 # (docker-compose env_file: .env). Артефакты партий — в volume ./games.

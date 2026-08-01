@@ -22,3 +22,8 @@ tests/
 docs/
 *.md
 !README.md
+
+# Фронтенд собирается внутри образа (стадия node): зависимости и локальный
+# бандл не копируем — npm ci ставит их заново по lock-файлу.
+frontend/node_modules
+src/arena/web/spa
