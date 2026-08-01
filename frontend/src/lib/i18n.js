@@ -47,7 +47,7 @@ function pluralForm(value, count, lang) {
  */
 export function createT(lang) {
   const dict = MESSAGES[lang] || MESSAGES[DEFAULT_LANG]
-  return function t(key, params) {
+  function t(key, params) {
     const value = dict[key]
     if (value === undefined) return key
     if (typeof value === 'object') {
@@ -56,6 +56,10 @@ export function createT(lang) {
     }
     return interpolate(value, params)
   }
+
+  /** Есть ли перевод: бэкенд может прислать код ошибки, которого мы не знаем. */
+  t.has = (key) => Object.prototype.hasOwnProperty.call(dict, key)
+  return t
 }
 
 function safeStorage() {

@@ -133,7 +133,11 @@ def test_start_game_rejects_unknown_model(tmp_path):
     response = client.post("/api/games", json={"white": "nope", "black": "b-model"})
 
     assert response.status_code == 400
-    assert "nope" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert detail["code"] == "error.modelUnknown"
+    assert detail["params"] == {"id": "nope"}
+    # техническая подробность остаётся для диагностики
+    assert "nope" in detail["message"]
 
 
 def test_start_game_rejects_model_without_key(tmp_path):
@@ -269,3 +273,36 @@ def test_language_code_is_normalized(tmp_path):
 
     record = client.app.state.game_manager.get(response.json()["id"]).record
     assert record.settings.response_language == "ru"
+
+
+# --- коды ошибок (интерфейс одноязычный: текст подставляет фронт) -------------
+
+def test_error_detail_carries_machine_readable_code(tmp_path):
+    """Отказ описан кодом + параметрами — фронт переведёт его на язык интерфейса."""
+    client = _client(tmp_path)
+
+    response = client.post("/api/games", json={"white": "no-key-model", "black": "b-model"})
+
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert detail["code"] == "error.modelNoKey"
+    assert detail["params"] == {"id": "no-key-model"}
+
+
+def test_missing_game_reports_code_and_id(tmp_path):
+    client = _client(tmp_path)
+
+    for path in ("/api/games/ghost", "/api/games/ghost/pgn"):
+        response = client.get(path)
+        assert response.status_code == 404, path
+        detail = response.json()["detail"]
+        assert detail["code"] == "error.gameNotFound"
+        assert detail["params"] == {"id": "ghost"}
+
+
+def test_error_detail_never_leaks_api_key(tmp_path):
+    client = _client(tmp_path)
+
+    response = client.post("/api/games", json={"white": "nope", "black": "b-model"})
+
+    assert _SECRET_KEY not in response.text

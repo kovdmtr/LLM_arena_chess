@@ -39,13 +39,18 @@ export function withToken(path, search) {
 }
 
 /**
- * Что показать по ответу FastAPI: `{text}` из `detail` либо ключ словаря.
+ * Что показать по ответу FastAPI: ключ словаря либо готовый текст.
  *
- * `detail` бэкенд шлёт строкой (человекочитаемая причина отказа) или списком
- * (ошибки валидации). Своего перевода у этих строк нет — показываем как есть.
+ * Наш `/api/*` отдаёт `detail = {code, params, message}` — код переводим на
+ * язык интерфейса, `message` (техническая подробность нижних слоёв) держим
+ * про запас на случай незнакомого кода. Строка/список в `detail` — чужой
+ * формат (валидация FastAPI, прокси): показываем как есть.
  */
 export function errorInfo(body, status) {
   const detail = body && body.detail
+  if (detail && typeof detail === 'object' && !Array.isArray(detail) && detail.code) {
+    return { key: detail.code, params: detail.params || null, text: detail.message || null }
+  }
   if (typeof detail === 'string' && detail) return { text: detail }
   if (Array.isArray(detail) && detail.length) {
     return { text: detail.map((item) => (item && item.msg) || String(item)).join('; ') }

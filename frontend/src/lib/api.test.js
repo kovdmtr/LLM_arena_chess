@@ -54,3 +54,44 @@ describe('errorInfo', () => {
     expect(createT('ru')(info.key, info.params)).toBe('Ошибка запроса (500).')
   })
 })
+
+describe('errorInfo: коды бэкенда', () => {
+  it('код из detail становится ключом словаря, params — подстановкой', () => {
+    const info = errorInfo({ detail: { code: 'error.modelNoKey', params: { id: 'gpt-4o' } } }, 400)
+
+    expect(info.key).toBe('error.modelNoKey')
+    expect(info.params).toEqual({ id: 'gpt-4o' })
+    expect(createT('en')(info.key, info.params)).toBe(
+      'No API key is configured for model “gpt-4o”.',
+    )
+    expect(createT('ru')(info.key, info.params)).toContain('gpt-4o')
+  })
+
+  it('техническое message остаётся про запас — на случай незнакомого кода', () => {
+    const info = errorInfo(
+      { detail: { code: 'error.brandNew', message: 'подробности с бэкенда' } },
+      400,
+    )
+
+    expect(info.key).toBe('error.brandNew')
+    expect(createT('en').has('error.brandNew')).toBe(false)
+    expect(info.text).toBe('подробности с бэкенда')
+  })
+
+  it('все коды ошибок API есть в обоих словарях', () => {
+    // Список зеркалит api_error(...) в src/arena/web/api.py.
+    const CODES = [
+      'error.modelUnknown',
+      'error.modelNoKey',
+      'error.modelUnavailable',
+      'error.startFailed',
+      'error.tournamentTooFewModels',
+      'error.gameNotFound',
+      'error.tournamentNotFound',
+    ]
+    for (const code of CODES) {
+      expect(createT('ru').has(code)).toBe(true)
+      expect(createT('en').has(code)).toBe(true)
+    }
+  })
+})

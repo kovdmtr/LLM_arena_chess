@@ -50,6 +50,46 @@ class StartTournamentRequest(BaseModel):
     language: str | None = None
 
 
+def api_error(
+    status_code: int,
+    code: str,
+    *,
+    params: dict[str, Any] | None = None,
+    message: str | None = None,
+) -> HTTPException:
+    """Ошибка API с машиночитаемым кодом.
+
+    Интерфейс одноязычный (RU **или** EN), а тексты нижних слоёв — русские,
+    поэтому наружу отдаём ``detail = {code, params, message}``: ``code`` фронт
+    переводит на язык интерфейса, ``params`` подставляет в фразу, ``message``
+    остаётся технической подробностью (показывается, только если код незнаком).
+    """
+    detail: dict[str, Any] = {"code": code}
+    if params:
+        detail["params"] = params
+    if message:
+        detail["message"] = message
+    return HTTPException(status_code=status_code, detail=detail)
+
+
+def _resolve_model(catalog: ModelCatalog, model_id: str) -> Any:
+    """Резолвнуть модель каталога или поднять 400 с кодом причины."""
+    try:
+        catalog.get(model_id)
+    except ConfigError as exc:
+        raise api_error(
+            400, "error.modelUnknown", params={"id": model_id}, message=str(exc)
+        ) from exc
+    try:
+        if not catalog.has_key(model_id):
+            raise api_error(400, "error.modelNoKey", params={"id": model_id})
+        return catalog.resolve(model_id)
+    except ConfigError as exc:  # напр. модель ссылается на неизвестного провайдера
+        raise api_error(
+            400, "error.modelUnavailable", params={"id": model_id}, message=str(exc)
+        ) from exc
+
+
 def _normalize_language(code: str | None) -> str | None:
     """Код языка интерфейса → поддерживаемый промптом или ``None``.
 
@@ -92,20 +132,20 @@ def build_api_router(
         """Запустить партию в фоне и вернуть её ``id``.
 
         Модели резолвятся через каталог (fail-fast: неизвестная модель или нет
-        ключа) — ошибка отдаётся как 400 с человекочитаемым текстом, чтобы фронт
-        показал её в форме.
+        ключа) — ошибка отдаётся как 400 с кодом причины, чтобы фронт показал её
+        в форме на языке интерфейса.
         """
         catalog = get_catalog(request.app)
+        resolved = {
+            "white": _resolve_model(catalog, payload.white),
+            "black": _resolve_model(catalog, payload.black),
+        }
         try:
-            resolved = {
-                "white": catalog.resolve(payload.white),
-                "black": catalog.resolve(payload.black),
-            }
             session = get_manager(request.app).start(
                 resolved, language=_normalize_language(payload.language)
             )
-        except (ConfigError, ProviderError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except ProviderError as exc:
+            raise api_error(400, "error.startFailed", message=str(exc)) from exc
         return {"id": session.id}
 
     @router.get("/games")
@@ -123,7 +163,7 @@ def build_api_router(
         manager = get_manager(request.app)
         record = manager.load_record(game_id)
         if record is None:
-            raise HTTPException(status_code=404, detail="партия не найдена")
+            raise api_error(404, "error.gameNotFound", params={"id": game_id})
         session = manager.get(game_id)
         live = session is not None and not session.done
         return {
@@ -139,7 +179,7 @@ def build_api_router(
         """PGN партии как файл на скачивание (тот же ``core.build_pgn``, что и в отчёте)."""
         record = get_manager(request.app).load_record(game_id)
         if record is None:
-            raise HTTPException(status_code=404, detail="партия не найдена")
+            raise api_error(404, "error.gameNotFound", params={"id": game_id})
         filename = _UNSAFE_FILENAME.sub("_", record.id) or "game"
         return Response(
             content=build_pgn(record) + "\n",
@@ -157,28 +197,23 @@ def build_api_router(
 
         Требуется ≥2 различных модели (дубли схлопываются, порядок сохраняется);
         каждая резолвится через каталог — fail-fast по отсутствию ключа. Ошибки
-        валидации отдаются как 400 с текстом для формы.
+        валидации отдаются как 400 с кодом причины для формы.
         """
         catalog = get_catalog(request.app)
         model_ids = list(dict.fromkeys(payload.models))  # дедуп, порядок сохранён
         if len(model_ids) < 2:
-            raise HTTPException(
-                status_code=400, detail="Выберите минимум две модели."
-            )
+            raise api_error(400, "error.tournamentTooFewModels")
         participants: list[PlayerInfo] = []
-        try:
-            for model_id in model_ids:
-                catalog.resolve(model_id)  # fail-fast: ключ обязателен
-                model = catalog.get(model_id)
-                participants.append(
-                    PlayerInfo(
-                        model_id=model.id,
-                        provider=model.provider,
-                        display_name=model.display_name,
-                    )
+        for model_id in model_ids:
+            _resolve_model(catalog, model_id)  # fail-fast: ключ обязателен
+            model = catalog.get(model_id)
+            participants.append(
+                PlayerInfo(
+                    model_id=model.id,
+                    provider=model.provider,
+                    display_name=model.display_name,
                 )
-        except ConfigError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            )
         session = get_tournament_manager(request.app).start(
             participants,
             double=payload.double,
@@ -202,7 +237,7 @@ def build_api_router(
         manager = get_tournament_manager(request.app)
         record = manager.load_record(tournament_id)
         if record is None:
-            raise HTTPException(status_code=404, detail="турнир не найден")
+            raise api_error(404, "error.tournamentNotFound", params={"id": tournament_id})
         session = manager.get(tournament_id)
         live = session is not None and not session.done
         standings = manager.load_standings(tournament_id)

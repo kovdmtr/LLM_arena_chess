@@ -24,8 +24,11 @@ export function Empty({ title, children }) {
 export function ErrorBanner({ error }) {
   const t = useT()
   if (!error) return null
-  // ключ словаря переводим, текст бэкенда показываем как есть
-  const text = error.key ? t(error.key, error.params) : error.text || error.message || String(error)
+  // знакомый код переводим; незнакомый (новее фронта) — показываем текст бэкенда
+  const text =
+    error.key && t.has(error.key)
+      ? t(error.key, error.params)
+      : error.text || error.message || String(error)
   return (
     <div className="banner banner-error" role="alert">
       <span>⚠</span>

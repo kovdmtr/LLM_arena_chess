@@ -120,7 +120,7 @@ def test_start_tournament_requires_two_models(tmp_path):
     response = client.post("/api/tournaments", json={"models": ["champ", "champ"]})
 
     assert response.status_code == 400
-    assert "две модели" in response.json()["detail"]
+    assert response.json()["detail"]["code"] == "error.tournamentTooFewModels"
 
 
 def test_start_tournament_rejects_model_without_key(tmp_path):
@@ -138,7 +138,7 @@ def test_start_tournament_rejects_unknown_model(tmp_path):
     response = client.post("/api/tournaments", json={"models": ["champ", "nope"]})
 
     assert response.status_code == 400
-    assert "nope" in response.json()["detail"]
+    assert response.json()["detail"]["code"] == "error.modelUnknown"
 
 
 # --- список -------------------------------------------------------------------
@@ -240,3 +240,23 @@ def test_start_tournament_without_language_keeps_default(tmp_path):
 
     session = manager.get(response.json()["id"])
     assert session.player_settings is None
+
+
+def test_missing_tournament_reports_code_and_id(tmp_path):
+    client = _client(_manager(tmp_path))
+
+    response = client.get("/api/tournaments/ghost")
+
+    assert response.status_code == 404
+    detail = response.json()["detail"]
+    assert detail["code"] == "error.tournamentNotFound"
+    assert detail["params"] == {"id": "ghost"}
+
+
+def test_tournament_model_without_key_reports_code(tmp_path):
+    client = _client(_manager(tmp_path))
+
+    response = client.post("/api/tournaments", json={"models": ["champ", "no-key"]})
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "error.modelNoKey"

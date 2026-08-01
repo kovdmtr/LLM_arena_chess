@@ -91,6 +91,14 @@ export const RU = {
   'error.notFound': 'Не найдено.',
   'error.forbidden': 'Нет доступа: откройте сайт по ссылке с токеном.',
   'error.generic': 'Ошибка запроса ({status}).',
+  // коды ошибок бэкенда (detail.code из /api/*)
+  'error.modelUnknown': 'Модель «{id}» не найдена в каталоге.',
+  'error.modelNoKey': 'Для модели «{id}» не задан API-ключ.',
+  'error.modelUnavailable': 'Модель «{id}» недоступна — проверьте настройки провайдера.',
+  'error.startFailed': 'Не удалось запустить партию: провайдер ответил ошибкой.',
+  'error.tournamentTooFewModels': 'Выберите минимум две модели.',
+  'error.gameNotFound': 'Партия «{id}» не найдена.',
+  'error.tournamentNotFound': 'Турнир «{id}» не найден.',
 
   'wip.eyebrow': 'Экран в работе',
   'wip.game.title': 'Партия {id}',
@@ -193,6 +201,14 @@ export const EN = {
   'error.notFound': 'Not found.',
   'error.forbidden': 'No access: open the site through the link with a token.',
   'error.generic': 'Request failed ({status}).',
+  // backend error codes (detail.code from /api/*)
+  'error.modelUnknown': 'Model “{id}” is not in the catalog.',
+  'error.modelNoKey': 'No API key is configured for model “{id}”.',
+  'error.modelUnavailable': 'Model “{id}” is unavailable — check the provider settings.',
+  'error.startFailed': 'Could not start the game: the provider returned an error.',
+  'error.tournamentTooFewModels': 'Pick at least two models.',
+  'error.gameNotFound': 'Game “{id}” was not found.',
+  'error.tournamentNotFound': 'Tournament “{id}” was not found.',
 
   'wip.eyebrow': 'Screen in progress',
   'wip.game.title': 'Game {id}',
