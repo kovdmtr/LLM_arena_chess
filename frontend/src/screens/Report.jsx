@@ -94,6 +94,9 @@ export default function Report({ record }) {
           <a className="btn btn-ghost btn-sm" href={api.pgnUrl(record.id)}>
             {t('report.downloadPgn')}
           </a>
+          <a className="btn btn-ghost btn-sm" href={api.reportUrl(record.id)}>
+            {t('report.downloadHtml')}
+          </a>
           <Link href={hrefFor('archive')} className="btn btn-quiet btn-sm">
             {t('report.toArchive')}
           </Link>

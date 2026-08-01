@@ -22,6 +22,7 @@ from arena.config import ConfigError, ModelCatalog
 from arena.core import build_pgn
 from arena.models import PlayerInfo
 from arena.prompts import SUPPORTED_LANGUAGES
+from arena.report import render_report_html
 from arena.providers import ProviderError
 from arena.web.games import STATUS_FINISHED, GameInfo, GameManager
 from arena.web.tournaments import TournamentInfo, TournamentManager
@@ -185,6 +186,23 @@ def build_api_router(
             content=build_pgn(record) + "\n",
             media_type="application/x-chess-pgn; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="{filename}.pgn"'},
+        )
+
+    @router.get("/games/{game_id}/report")
+    def api_game_report(request: Request, game_id: str) -> Response:
+        """Самодостаточный HTML-отчёт партии как файл на скачивание (D-013).
+
+        Разбор партии показывает SPA, а этот файл — то же самое, но автономно:
+        открывается без сети и без сервера, поэтому ссылки «на главную» в нём нет.
+        """
+        record = get_manager(request.app).load_record(game_id)
+        if record is None:
+            raise api_error(404, "error.gameNotFound", params={"id": game_id})
+        filename = _UNSAFE_FILENAME.sub("_", record.id) or "game"
+        return Response(
+            content=render_report_html(record),
+            media_type="text/html; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}.html"'},
         )
 
     # --- турниры --------------------------------------------------------------

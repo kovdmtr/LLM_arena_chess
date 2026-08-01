@@ -306,3 +306,33 @@ def test_error_detail_never_leaks_api_key(tmp_path):
     response = client.post("/api/games", json={"white": "nope", "black": "b-model"})
 
     assert _SECRET_KEY not in response.text
+
+
+def test_report_downloads_as_self_contained_file(tmp_path):
+    """Разбор показывает SPA; этот файл — тот же отчёт, но автономный (D-013)."""
+    client = _client(tmp_path)
+    game_id = _play(client)
+
+    response = client.get(f"/api/games/{game_id}/report")
+
+    assert response.status_code == 200
+    assert "attachment" in response.headers["content-disposition"]
+    assert f'filename="{game_id}.html"' in response.headers["content-disposition"]
+    body = response.text
+    assert body.lstrip().startswith("<!DOCTYPE html>")
+    # доски встроены как inline-SVG; внешних файлов и сети нет
+    # (xmlns="http://www.w3.org/2000/svg" — это пространство имён, не запрос)
+    assert "<img" not in body
+    assert "<link" not in body
+    assert 'src="http' not in body
+    # ссылки «на главную» в скачанном файле нет — он открывается без сервера
+    assert 'href="/"' not in body
+
+
+def test_report_of_unknown_game_is_404(tmp_path):
+    client = _client(tmp_path)
+
+    response = client.get("/api/games/ghost/report")
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "error.gameNotFound"
